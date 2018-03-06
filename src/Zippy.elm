@@ -58,7 +58,11 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick, onInput)
 import Keyboard exposing (KeyCode)
-import SharedTypes
+import Task
+import Time exposing (Time)
+import Window exposing (Size)
+import Zippy.Render exposing (renderList, renderObject)
+import Zippy.SharedTypes
     exposing
         ( Msg(..)
         , Object
@@ -67,8 +71,6 @@ import SharedTypes
         , makeVector
         , zeroVector
         )
-import Task
-import Window exposing (Size)
 
 
 resizeCmd : Cmd Msg
@@ -98,12 +100,17 @@ initialSize =
     }
 
 
+objectSize : Vector
+objectSize =
+    makeVector 100 125
+
+
 initialObject : Object
 initialObject =
-    { size = makeSize 50 75
+    { size = objectSize
     , image = Nothing
     , position = makeVector 200 200
-    , velocity = makeVector 10 10
+    , velocity = makeVector 8 4
     , mass = 1
     }
 
@@ -122,14 +129,120 @@ init =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        Resize size ->
+            ( { model | windowSize = size }
+            , Cmd.none
+            )
+
+        Update ->
+            ( updateObjects model
+            , Cmd.none
+            )
+
+        Nop ->
+            ( model, Cmd.none )
+
+
+updateObject : Size -> List Object -> Object -> Object
+updateObject windowSize objects object =
+    let
+        pos =
+            object.position
+
+        px =
+            pos.x
+
+        py =
+            pos.y
+
+        size =
+            object.size
+
+        sx =
+            size.x
+
+        sy =
+            size.y
+
+        right =
+            px + sx
+
+        bottom =
+            py + sy
+
+        w =
+            toFloat windowSize.width
+
+        h =
+            toFloat windowSize.height
+
+        v =
+            object.velocity
+
+        vx =
+            v.x
+
+        vy =
+            v.y
+
+        maxx =
+            toFloat windowSize.width
+
+        maxy =
+            toFloat windowSize.height
+
+        newpos =
+            { x = px + vx
+            , y = py + vy
+            }
+
+        newvx =
+            if vx > 0 && right >= w then
+                -vx
+            else if vx < 0 && px <= 0 then
+                -vx
+            else
+                vx
+
+        newvy =
+            if vy > 0 && bottom >= h then
+                -vy
+            else if vy < 0 && py <= 0 then
+                -vy
+            else
+                vy
+
+        newv =
+            { x = newvx, y = newvy }
+    in
+    { object | position = newpos, velocity = newv }
+
+
+updateObjects : Model -> Model
+updateObjects model =
+    let
+        objects =
+            List.map
+                (updateObject model.windowSize model.objects)
+                model.objects
+    in
+    { model | objects = objects }
 
 
 view : Model -> Html Msg
 view model =
-    text "Hello World!"
+    renderList model.objects model.windowSize
+
+
+refreshPeriod : Time
+refreshPeriod =
+    30 * Time.millisecond
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Window.resizes Resize
+    Sub.batch
+        [ Window.resizes Resize
+        , Time.every refreshPeriod (\_ -> Update)
+        ]

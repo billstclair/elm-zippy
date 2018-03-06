@@ -10,7 +10,7 @@
 ----------------------------------------------------------------------
 
 
-module SharedTypes
+module Zippy.SharedTypes
     exposing
         ( Msg(..)
         , Object
@@ -25,6 +25,7 @@ import Window exposing (Size)
 
 type Msg
     = Resize Size
+    | Update
     | Nop
 
 
@@ -52,7 +53,7 @@ makeSize w h =
 {-| For now, objects are all rectangular
 -}
 type alias Object =
-    { size : Size
+    { size : Vector
     , image : Maybe Int
     , position : Vector
     , velocity : Vector
