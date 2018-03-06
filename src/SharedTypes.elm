@@ -41,9 +41,7 @@ makeVector x y =
 
 zeroVector : Vector
 zeroVector =
-    { x = 0
-    , y = 0
-    }
+    makeVector 0 0
 
 
 makeSize : Int -> Int -> Size
