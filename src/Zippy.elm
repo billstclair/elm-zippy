@@ -14,6 +14,7 @@ module Zippy exposing (..)
 
 import AnimationFrame
 import Debug exposing (log)
+import Dialog
 import Html
     exposing
         ( Attribute
@@ -59,7 +60,7 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick, onInput)
 import Keyboard exposing (KeyCode)
-import Random
+import Random exposing (Seed)
 import Task
 import Time exposing (Time)
 import Window exposing (Size)
@@ -93,7 +94,11 @@ main =
 
 type alias Model =
     { windowSize : Size
+    , seed : Seed
     , objects : List Object
+    , showDialog : Bool
+    , didShow : Bool
+    , running : Bool
     }
 
 
@@ -129,6 +134,8 @@ type alias ImageChoice =
     }
 
 
+{-| chooseImage expects probabilities to add to 1.
+-}
 choices : List ImageChoice
 choices =
     [ { image = zippy
@@ -158,8 +165,8 @@ chooseImage x =
     loop x choices
 
 
-initialObject : Object
-initialObject =
+defaultObject : Object
+defaultObject =
     { size = objectSize
     , image = Nothing
     , position = makeVector 200 200
@@ -168,10 +175,38 @@ initialObject =
     }
 
 
+makeInitialObjects : Seed -> ( List Object, Seed )
+makeInitialObjects seed =
+    let
+        ( x, seed2 ) =
+            Random.step (Random.float 0 1) seed
+    in
+    case chooseImage x of
+        Nothing ->
+            ( [ defaultObject ], seed2 )
+
+        maybeImg ->
+            ( [ { defaultObject | image = maybeImg } ], seed2 )
+
+
+initialObject : Object
+initialObject =
+    { size = objectSize
+    , image = Nothing
+    , position = makeVector 200 200
+    , velocity = makeVector 0 0
+    , mass = 1
+    }
+
+
 initialModel : Model
 initialModel =
     { windowSize = initialSize
+    , seed = Random.initialSeed 0
     , objects = [ initialObject ]
+    , showDialog = True
+    , didShow = False
+    , running = True
     }
 
 
@@ -179,7 +214,7 @@ init : ( Model, Cmd Msg )
 init =
     initialModel
         ! [ resizeCmd
-          , Random.generate ChooseImage (Random.float 0 1)
+          , Task.perform Initialize Time.now
           ]
 
 
@@ -189,22 +224,47 @@ update msg model =
         Resize size ->
             { model | windowSize = size } ! []
 
+        Initialize time ->
+            let
+                seed =
+                    Random.initialSeed (truncate time)
+
+                ( objects, seed2 ) =
+                    makeInitialObjects seed
+            in
+            { model
+                | seed = seed2
+                , objects = objects
+            }
+                ! []
+
         Update ->
-            updateObjects model ! []
+            if model.running then
+                updateObjects model ! []
+            else
+                model ! []
 
-        ChooseImage x ->
-            case chooseImage x of
-                Nothing ->
-                    model ! []
+        ShowDialog show ->
+            { model
+                | showDialog = show
+                , didShow = model.didShow || show
+            }
+                ! []
 
-                Just img ->
-                    case model.objects of
-                        [] ->
-                            model ! []
+        Run run ->
+            { model | running = run } ! []
 
-                        object :: tail ->
-                            { model | objects = { object | image = Just img } :: tail }
-                                ! []
+        Clear ->
+            model ! []
+
+        RemoveObject object ->
+            model ! []
+
+        AddObject object ->
+            model ! []
+
+        SelectObject object ->
+            model ! []
 
         Nop ->
             model ! []
@@ -293,9 +353,61 @@ updateObjects model =
     { model | objects = objects }
 
 
+btn : String -> Msg -> Html Msg
+btn string msg =
+    button [ onClick msg ]
+        [ text string ]
+
+
+dialog : Model -> Html Msg
+dialog model =
+    let
+        run =
+            not model.running
+    in
+    Dialog.render
+        { styles = []
+        , title = ""
+        , content =
+            [ btn "Clear" Clear
+            , btn "Add" <| AddObject initialObject
+            , btn "Remove" <| RemoveObject initialObject
+            , btn
+                (if run then
+                    "Run"
+                 else
+                    "Stop"
+                )
+                (Run run)
+            ]
+        , actionBar =
+            [ btn "Close Dialog" <| ShowDialog False ]
+        }
+        True
+
+
 view : Model -> Html Msg
 view model =
-    renderList model.objects model.windowSize
+    div []
+        [ if model.showDialog then
+            dialog model
+          else
+            button
+                [ onClick <| ShowDialog True
+                , style
+                    [ ( "position", "fixed" )
+                    , ( "top", "10px" )
+                    , ( "left", "10px" )
+                    ]
+                ]
+                [ text <|
+                    if model.didShow then
+                        "+"
+                    else
+                        "Click Me!"
+                ]
+        , renderList model.objects model.windowSize
+        ]
 
 
 refreshPeriod : Time

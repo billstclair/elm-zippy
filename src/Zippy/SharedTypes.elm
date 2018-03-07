@@ -22,13 +22,20 @@ module Zippy.SharedTypes
         , zeroVector
         )
 
+import Time exposing (Time)
 import Window exposing (Size)
 
 
 type Msg
     = Resize Size
+    | Initialize Time
     | Update
-    | ChooseImage Float
+    | ShowDialog Bool
+    | Run Bool
+    | Clear
+    | RemoveObject Object
+    | AddObject Object
+    | SelectObject Object
     | Nop
 
 
