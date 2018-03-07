@@ -175,18 +175,94 @@ defaultObject =
     }
 
 
-makeInitialObjects : Seed -> ( List Object, Seed )
-makeInitialObjects seed =
+randomFloat : Float -> Float -> Seed -> ( Float, Seed )
+randomFloat min max seed =
+    Random.step (Random.float min max) seed
+
+
+randomVector : Vector -> Vector -> Seed -> ( Vector, Seed )
+randomVector mins maxs seed =
     let
         ( x, seed2 ) =
-            Random.step (Random.float 0 1) seed
-    in
-    case chooseImage x of
-        Nothing ->
-            ( [ defaultObject ], seed2 )
+            randomFloat mins.x maxs.x seed
 
-        maybeImg ->
-            ( [ { defaultObject | image = maybeImg } ], seed2 )
+        ( y, seed3 ) =
+            randomFloat mins.y maxs.y seed
+    in
+    ( makeVector x y, seed3 )
+
+
+randomPosition : Size -> Seed -> ( Vector, Seed )
+randomPosition size seed =
+    let
+        maxx =
+            toFloat size.width - objectSize.x
+
+        maxy =
+            toFloat size.height - objectSize.y
+    in
+    randomVector zeroVector (makeVector maxx maxy) seed
+
+
+minVelocity : Vector
+minVelocity =
+    makeVector -12 -4
+
+
+maxVelocity : Vector
+maxVelocity =
+    makeVector 12 4
+
+
+randomVelocity : Seed -> ( Vector, Seed )
+randomVelocity seed =
+    randomVector minVelocity maxVelocity seed
+
+
+randomImage : Seed -> ( Maybe ImageUrls, Seed )
+randomImage seed =
+    let
+        ( x, seed2 ) =
+            randomFloat 0 1 seed
+    in
+    ( chooseImage x, seed2 )
+
+
+randomObject : Size -> Seed -> ( Object, Seed )
+randomObject size seed =
+    let
+        ( img, seed2 ) =
+            randomImage seed
+
+        ( pos, seed3 ) =
+            randomPosition size seed2
+
+        ( vel, seed4 ) =
+            randomVelocity seed3
+
+        object =
+            { defaultObject
+                | image = img
+                , position = pos
+                , velocity = vel
+            }
+    in
+    ( object, seed4 )
+
+
+makeInitialObjects : Size -> Seed -> ( List Object, Seed )
+makeInitialObjects size seed =
+    let
+        ( o1, seed2 ) =
+            randomObject size seed
+
+        ( o2, seed3 ) =
+            randomObject size seed2
+
+        ( o3, seed4 ) =
+            randomObject size seed3
+    in
+    ( [ o1, o2, o3 ], seed4 )
 
 
 initialObject : Object
@@ -204,7 +280,7 @@ initialModel =
     { windowSize = initialSize
     , seed = Random.initialSeed 0
     , objects = [ initialObject ]
-    , showDialog = True
+    , showDialog = False
     , didShow = False
     , running = True
     }
@@ -230,7 +306,7 @@ update msg model =
                     Random.initialSeed (truncate time)
 
                 ( objects, seed2 ) =
-                    makeInitialObjects seed
+                    makeInitialObjects model.windowSize seed
             in
             { model
                 | seed = seed2
@@ -255,13 +331,31 @@ update msg model =
             { model | running = run } ! []
 
         Clear ->
-            model ! []
+            { model | objects = [] } ! []
 
         RemoveObject object ->
-            model ! []
+            --currently ignores object
+            case List.reverse model.objects of
+                [] ->
+                    model ! []
+
+                _ :: tail ->
+                    { model | objects = List.reverse tail } ! []
 
         AddObject object ->
-            model ! []
+            --current ignores object
+            let
+                ( object, seed ) =
+                    randomObject model.windowSize model.seed
+
+                objects =
+                    object :: model.objects
+            in
+            { model
+                | objects = objects
+                , seed = seed
+            }
+                ! []
 
         SelectObject object ->
             model ! []
@@ -359,6 +453,33 @@ btn string msg =
         [ text string ]
 
 
+sqrimg : String -> String -> Int -> Html Msg
+sqrimg url name size =
+    img
+        [ src url
+        , title name
+        , alt name
+        , width size
+        , height size
+        ]
+        []
+
+
+logoLink : String -> String -> String -> Int -> Html Msg
+logoLink url img name size =
+    a [ href url ]
+        [ sqrimg ("images/" ++ img) name size ]
+
+
+helpLink : String -> String -> Html Msg
+helpLink string url =
+    a
+        [ href url
+        , target "_blank"
+        ]
+        [ text string ]
+
+
 dialog : Model -> Html Msg
 dialog model =
     let
@@ -369,19 +490,37 @@ dialog model =
         { styles = []
         , title = ""
         , content =
-            [ btn "Clear" Clear
-            , btn "Add" <| AddObject initialObject
-            , btn "Remove" <| RemoveObject initialObject
-            , btn
-                (if run then
-                    "Run"
-                 else
-                    "Stop"
-                )
-                (Run run)
+            [ div [ align "center" ]
+                [ div []
+                    [ btn "Clear" Clear
+                    , btn "Add" <| AddObject initialObject
+                    , btn "Remove" <| RemoveObject initialObject
+                    , btn
+                        (if run then
+                            "Run"
+                         else
+                            "Stop"
+                        )
+                        (Run run)
+                    ]
+                , div []
+                    [ helpLink "Gib Goy Games" "https:/gibgoygames.com/" ]
+                , div []
+                    [ logoLink "http://elm-lang.org/"
+                        "elm-logo-125x125.png"
+                        "Elm inside"
+                        28
+                    , logoLink "https://github.com/billstclair/kakuro-master"
+                        "GitHub-Mark-32px.png"
+                        "GitHub source code"
+                        32
+                    ]
+                , div []
+                    [ btn "Close Dialog" <| ShowDialog False ]
+                ]
             ]
         , actionBar =
-            [ btn "Close Dialog" <| ShowDialog False ]
+            []
         }
         True
 
