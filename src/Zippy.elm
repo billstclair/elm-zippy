@@ -69,6 +69,7 @@ import Zippy.SharedTypes
         , Vector
         , makeSize
         , makeVector
+        , sizeToVector
         , zeroVector
         )
 
@@ -108,7 +109,8 @@ objectSize =
 initialObject : Object
 initialObject =
     { size = objectSize
-    , image = Nothing
+    , image = Just "images/zippy-left.jpg"
+    , rightImage = Just "images/zippy-right.jpg"
     , position = makeVector 200 200
     , velocity = makeVector 8 4
     , mass = 1
@@ -144,7 +146,7 @@ update msg model =
             ( model, Cmd.none )
 
 
-updateObject : Size -> List Object -> Object -> Object
+updateObject : Vector -> List Object -> Object -> Object
 updateObject windowSize objects object =
     let
         pos =
@@ -172,10 +174,10 @@ updateObject windowSize objects object =
             py + sy
 
         w =
-            toFloat windowSize.width
+            windowSize.x
 
         h =
-            toFloat windowSize.height
+            windowSize.y
 
         v =
             object.velocity
@@ -185,12 +187,6 @@ updateObject windowSize objects object =
 
         vy =
             v.y
-
-        maxx =
-            toFloat windowSize.width
-
-        maxy =
-            toFloat windowSize.height
 
         newpos =
             { x = px + vx
@@ -222,9 +218,12 @@ updateObject windowSize objects object =
 updateObjects : Model -> Model
 updateObjects model =
     let
+        ws =
+            sizeToVector model.windowSize
+
         objects =
             List.map
-                (updateObject model.windowSize model.objects)
+                (updateObject ws model.objects)
                 model.objects
     in
     { model | objects = objects }

@@ -17,6 +17,7 @@ module Zippy.SharedTypes
         , Vector
         , makeSize
         , makeVector
+        , sizeToVector
         , zeroVector
         )
 
@@ -40,6 +41,13 @@ makeVector x y =
     { x = x, y = y }
 
 
+sizeToVector : Size -> Vector
+sizeToVector size =
+    { x = toFloat size.width
+    , y = toFloat size.height
+    }
+
+
 zeroVector : Vector
 zeroVector =
     makeVector 0 0
@@ -54,7 +62,8 @@ makeSize w h =
 -}
 type alias Object =
     { size : Vector
-    , image : Maybe Int
+    , image : Maybe String
+    , rightImage : Maybe String
     , position : Vector
     , velocity : Vector
     , mass : Float

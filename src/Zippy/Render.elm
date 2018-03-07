@@ -13,7 +13,7 @@
 module Zippy.Render exposing (renderList, renderObject)
 
 import Html exposing (Html, div, text)
-import Svg exposing (Svg, g, line, rect, svg)
+import Svg exposing (Svg, g, image, line, rect, svg)
 import Svg.Attributes
     exposing
         ( class
@@ -26,6 +26,7 @@ import Svg.Attributes
         , x
         , x1
         , x2
+        , xlinkHref
         , y
         , y1
         , y2
@@ -43,7 +44,7 @@ import Zippy.SharedTypes
 import Zippy.Styles as Styles exposing (SClass(..), classes)
 
 
-renderObject : Object -> Svg Msg
+renderObject : Object -> List (Svg Msg)
 renderObject object =
     let
         size =
@@ -51,15 +52,51 @@ renderObject object =
 
         pos =
             object.position
+
+        box =
+            rect
+                [ class "SvgCell SvgObjectColor"
+                , x <| toString pos.x
+                , y <| toString pos.y
+                , width <| toString size.x
+                , height <| toString size.y
+                ]
+                []
+
+        vx =
+            object.velocity.x
+
+        leftImage =
+            object.image
+
+        rightImage =
+            object.rightImage
+
+        img =
+            if vx < 0 then
+                leftImage
+            else if rightImage == Nothing then
+                leftImage
+            else
+                rightImage
+
+        pict =
+            case img of
+                Nothing ->
+                    []
+
+                Just href ->
+                    [ image
+                        [ xlinkHref href
+                        , x <| toString (pos.x + 1)
+                        , y <| toString (pos.y + 1)
+                        , width <| toString (size.x - 2)
+                        , height <| toString (size.y - 2)
+                        ]
+                        []
+                    ]
     in
-    rect
-        [ class "SvgCell SvgObjectColor"
-        , x <| toString pos.x
-        , y <| toString pos.y
-        , width <| toString size.x
-        , height <| toString size.y
-        ]
-        []
+    box :: pict
 
 
 renderList : List Object -> Size -> Html Msg
@@ -82,6 +119,6 @@ renderList objects size =
                 , height <| toString (size.height - 2)
                 ]
                 []
-                :: List.map renderObject objects
+                :: List.concatMap renderObject objects
             )
         ]
