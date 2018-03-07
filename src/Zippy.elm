@@ -59,13 +59,15 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick, onInput)
 import Keyboard exposing (KeyCode)
+import Random
 import Task
 import Time exposing (Time)
 import Window exposing (Size)
 import Zippy.Render exposing (renderList, renderObject)
 import Zippy.SharedTypes
     exposing
-        ( Msg(..)
+        ( ImageUrls
+        , Msg(..)
         , Object
         , Vector
         , makeSize
@@ -107,11 +109,59 @@ objectSize =
     makeVector 200 250
 
 
+zippy : ImageUrls
+zippy =
+    { left = "images/zippy-left.jpg"
+    , right = "images/zippy-right.jpg"
+    }
+
+
+milo : ImageUrls
+milo =
+    { left = "images/milo-head-left.jpg"
+    , right = "images/milo-head-right.jpg"
+    }
+
+
+type alias ImageChoice =
+    { image : ImageUrls
+    , probability : Float
+    }
+
+
+choices : List ImageChoice
+choices =
+    [ { image = zippy
+      , probability = 0.75
+      }
+    , { image = milo
+      , probability = 0.25
+      }
+    ]
+
+
+chooseImage : Float -> Maybe ImageUrls
+chooseImage x =
+    let
+        loop =
+            \x choices ->
+                case choices of
+                    [] ->
+                        Nothing
+
+                    head :: tail ->
+                        if x <= head.probability then
+                            Just head.image
+                        else
+                            loop (x - head.probability) tail
+    in
+    loop x choices
+
+
 initialObject : Object
 initialObject =
     { size = objectSize
-    , image = Just "images/zippy-left.jpg"
-    , rightImage = Just "images/zippy-right.jpg"
+    , image = Nothing
     , position = makeVector 200 200
     , velocity = makeVector 8 4
     , mass = 1
@@ -127,24 +177,37 @@ initialModel =
 
 init : ( Model, Cmd Msg )
 init =
-    ( initialModel, resizeCmd )
+    initialModel
+        ! [ resizeCmd
+          , Random.generate ChooseImage (Random.float 0 1)
+          ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Resize size ->
-            ( { model | windowSize = size }
-            , Cmd.none
-            )
+            { model | windowSize = size } ! []
 
         Update ->
-            ( updateObjects model
-            , Cmd.none
-            )
+            updateObjects model ! []
+
+        ChooseImage x ->
+            case chooseImage x of
+                Nothing ->
+                    model ! []
+
+                Just img ->
+                    case model.objects of
+                        [] ->
+                            model ! []
+
+                        object :: tail ->
+                            { model | objects = { object | image = Just img } :: tail }
+                                ! []
 
         Nop ->
-            ( model, Cmd.none )
+            model ! []
 
 
 updateObject : Vector -> List Object -> Object -> Object

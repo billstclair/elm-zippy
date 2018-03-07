@@ -66,16 +66,24 @@ renderObject object =
         vx =
             object.velocity.x
 
-        leftImage =
+        maybeImage =
             object.image
 
-        rightImage =
-            object.rightImage
+        ( leftImage, rightImage ) =
+            case maybeImage of
+                Nothing ->
+                    ( Nothing, Nothing )
+
+                Just { left, right } ->
+                    ( Just left
+                    , if right == "" then
+                        Just left
+                      else
+                        Just right
+                    )
 
         img =
             if vx < 0 then
-                leftImage
-            else if rightImage == Nothing then
                 leftImage
             else
                 rightImage

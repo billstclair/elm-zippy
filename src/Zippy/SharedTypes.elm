@@ -12,7 +12,8 @@
 
 module Zippy.SharedTypes
     exposing
-        ( Msg(..)
+        ( ImageUrls
+        , Msg(..)
         , Object
         , Vector
         , makeSize
@@ -27,6 +28,7 @@ import Window exposing (Size)
 type Msg
     = Resize Size
     | Update
+    | ChooseImage Float
     | Nop
 
 
@@ -58,12 +60,17 @@ makeSize w h =
     { width = w, height = h }
 
 
+type alias ImageUrls =
+    { right : String
+    , left : String
+    }
+
+
 {-| For now, objects are all rectangular
 -}
 type alias Object =
     { size : Vector
-    , image : Maybe String
-    , rightImage : Maybe String
+    , image : Maybe ImageUrls
     , position : Vector
     , velocity : Vector
     , mass : Float
