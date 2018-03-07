@@ -12,6 +12,7 @@
 
 module Zippy exposing (..)
 
+import AnimationFrame
 import Debug exposing (log)
 import Html
     exposing
@@ -103,7 +104,7 @@ initialSize =
 
 objectSize : Vector
 objectSize =
-    makeVector 100 125
+    makeVector 200 250
 
 
 initialObject : Object
@@ -236,12 +237,12 @@ view model =
 
 refreshPeriod : Time
 refreshPeriod =
-    30 * Time.millisecond
+    20 * Time.millisecond
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Window.resizes Resize
-        , Time.every refreshPeriod (\_ -> Update)
+        , AnimationFrame.times (\_ -> Update)
         ]
