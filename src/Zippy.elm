@@ -204,9 +204,14 @@ randomPosition size seed =
     randomVector zeroVector (makeVector maxx maxy) seed
 
 
+randomBool : Seed -> ( Bool, Seed )
+randomBool seed =
+    Random.step Random.bool seed
+
+
 minVelocity : Vector
 minVelocity =
-    makeVector -12 -4
+    makeVector 4 2
 
 
 maxVelocity : Vector
@@ -216,7 +221,29 @@ maxVelocity =
 
 randomVelocity : Seed -> ( Vector, Seed )
 randomVelocity seed =
-    randomVector minVelocity maxVelocity seed
+    let
+        ( { x, y }, seed2 ) =
+            randomVector minVelocity maxVelocity seed
+
+        ( negx, seed3 ) =
+            randomBool seed2
+
+        ( negy, seed4 ) =
+            randomBool seed3
+
+        xx =
+            if negx then
+                -x
+            else
+                x
+
+        yy =
+            if negy then
+                -y
+            else
+                y
+    in
+    ( makeVector xx yy, seed4 )
 
 
 randomImage : Seed -> ( Maybe ImageUrls, Seed )
@@ -504,7 +531,7 @@ dialog model =
                         (Run run)
                     ]
                 , div []
-                    [ helpLink "Gib Goy Games" "https:/gibgoygames.com/" ]
+                    [ helpLink "Gib Goy Games" "https://gibgoygames.com/" ]
                 , div []
                     [ logoLink "http://elm-lang.org/"
                         "elm-logo-125x125.png"
