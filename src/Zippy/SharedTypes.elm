@@ -12,13 +12,21 @@
 
 module Zippy.SharedTypes
     exposing
-        ( ImageUrls
+        ( ImageChoice
+        , ImageUrls
         , Msg(..)
         , Object
+        , Rectangle
+        , Side(..)
         , Vector
+        , makeRectangle
         , makeSize
         , makeVector
+        , rectangleCoordinates
+        , rectangleFromVectors
         , sizeToVector
+        , vectorCoordinates
+        , zeroRectangle
         , zeroVector
         )
 
@@ -27,7 +35,8 @@ import Window exposing (Size)
 
 
 type Msg
-    = Resize Size
+    = InitialSize Size
+    | Resize Size
     | Initialize Time
     | Update
     | ShowDialog Bool
@@ -35,8 +44,23 @@ type Msg
     | Clear
     | RemoveObject Object
     | AddObject Object
+    | ToggleChoice ImageChoice
     | SelectObject Object
     | Nop
+
+
+type alias ImageChoice =
+    { image : ImageUrls
+    , mass : Float
+    , probability : Float
+    }
+
+
+type Side
+    = LeftSide
+    | RightSide
+    | TopSide
+    | BottomSide
 
 
 type alias Vector =
@@ -50,6 +74,11 @@ makeVector x y =
     { x = x, y = y }
 
 
+vectorCoordinates : Vector -> ( Float, Float )
+vectorCoordinates vector =
+    ( vector.x, vector.y )
+
+
 sizeToVector : Size -> Vector
 sizeToVector size =
     { x = toFloat size.width
@@ -60,6 +89,57 @@ sizeToVector size =
 zeroVector : Vector
 zeroVector =
     makeVector 0 0
+
+
+type alias Rectangle =
+    { position : Vector --top-left corner
+    , size : Vector
+    }
+
+
+{-| Result is (left, top, right bottom)
+-}
+rectangleCoordinates : Rectangle -> ( Float, Float, Float, Float )
+rectangleCoordinates rect =
+    let
+        pos =
+            rect.position
+
+        size =
+            rect.size
+
+        left =
+            pos.x
+
+        top =
+            pos.y
+
+        right =
+            left + size.x
+
+        bottom =
+            top + size.y
+    in
+    ( left, top, right, bottom )
+
+
+makeRectangle : Float -> Float -> Float -> Float -> Rectangle
+makeRectangle left top width height =
+    rectangleFromVectors
+        (makeVector left top)
+        (makeVector width height)
+
+
+rectangleFromVectors : Vector -> Vector -> Rectangle
+rectangleFromVectors position size =
+    { position = position
+    , size = size
+    }
+
+
+zeroRectangle : Rectangle
+zeroRectangle =
+    rectangleFromVectors zeroVector zeroVector
 
 
 makeSize : Int -> Int -> Size
@@ -76,9 +156,8 @@ type alias ImageUrls =
 {-| For now, objects are all rectangular
 -}
 type alias Object =
-    { size : Vector
-    , image : Maybe ImageUrls
-    , position : Vector
+    { rect : Rectangle
     , velocity : Vector
     , mass : Float
+    , image : Maybe ImageUrls
     }

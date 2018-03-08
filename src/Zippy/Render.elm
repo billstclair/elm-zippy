@@ -48,10 +48,10 @@ renderObject : Object -> List (Svg Msg)
 renderObject object =
     let
         size =
-            object.size
+            object.rect.size
 
         pos =
-            object.position
+            object.rect.position
 
         box =
             rect

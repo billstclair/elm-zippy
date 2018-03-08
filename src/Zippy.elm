@@ -60,27 +60,34 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick, onInput)
 import Keyboard exposing (KeyCode)
+import List.Extra as LE
 import Random exposing (Seed)
 import Task
 import Time exposing (Time)
 import Window exposing (Size)
+import Zippy.Physics exposing (adjustForCollision)
 import Zippy.Render exposing (renderList, renderObject)
 import Zippy.SharedTypes
     exposing
-        ( ImageUrls
+        ( ImageChoice
+        , ImageUrls
         , Msg(..)
         , Object
+        , Rectangle
         , Vector
+        , makeRectangle
         , makeSize
         , makeVector
+        , rectangleFromVectors
         , sizeToVector
+        , zeroRectangle
         , zeroVector
         )
 
 
-resizeCmd : Cmd Msg
-resizeCmd =
-    Task.perform (\x -> Resize x) Window.size
+initialSizeCmd : Cmd Msg
+initialSizeCmd =
+    Task.perform (\x -> InitialSize x) Window.size
 
 
 main =
@@ -95,6 +102,7 @@ main =
 type alias Model =
     { windowSize : Size
     , seed : Seed
+    , choices : List ImageChoice
     , objects : List Object
     , showDialog : Bool
     , didShow : Bool
@@ -111,7 +119,7 @@ initialSize =
 
 objectSize : Vector
 objectSize =
-    makeVector 200 250
+    makeVector 160 200
 
 
 zippy : ImageUrls
@@ -121,6 +129,11 @@ zippy =
     }
 
 
+zippyMass : Float
+zippyMass =
+    2
+
+
 milo : ImageUrls
 milo =
     { left = "images/milo-head-left.jpg"
@@ -128,50 +141,80 @@ milo =
     }
 
 
-type alias ImageChoice =
-    { image : ImageUrls
-    , probability : Float
+miloMass : Float
+miloMass =
+    1
+
+
+zippyChoice : ImageChoice
+zippyChoice =
+    { image = zippy
+    , mass = zippyMass
+    , probability = 0.75
+    }
+
+
+miloChoice : ImageChoice
+miloChoice =
+    { image = milo
+    , mass = miloMass
+    , probability = 0.25
     }
 
 
 {-| chooseImage expects probabilities to add to 1.
 -}
-choices : List ImageChoice
-choices =
-    [ { image = zippy
-      , probability = 0.75
-      }
-    , { image = milo
-      , probability = 0.25
-      }
+allChoices : List ImageChoice
+allChoices =
+    [ zippyChoice
+    , miloChoice
     ]
 
 
-chooseImage : Float -> Maybe ImageUrls
-chooseImage x =
+chooseImage : Float -> List ImageChoice -> Maybe ( ImageUrls, Float )
+chooseImage x choices =
     let
         loop =
-            \x choices ->
-                case choices of
+            \x chs ->
+                case chs of
                     [] ->
-                        Nothing
+                        case choices of
+                            [] ->
+                                Nothing
+
+                            ch :: _ ->
+                                Just ( ch.image, ch.mass )
 
                     head :: tail ->
                         if x <= head.probability then
-                            Just head.image
+                            Just ( head.image, head.mass )
                         else
                             loop (x - head.probability) tail
     in
     loop x choices
 
 
+defaultObjectPosition : Vector
+defaultObjectPosition =
+    makeVector 200 200
+
+
+defaultObjectRect : Rectangle
+defaultObjectRect =
+    rectangleFromVectors defaultObjectPosition objectSize
+
+
+defaultMass : Float
+defaultMass =
+    1
+
+
 defaultObject : Object
 defaultObject =
-    { size = objectSize
+    { rect = defaultObjectRect
     , image = Nothing
-    , position = makeVector 200 200
     , velocity = makeVector 8 4
-    , mass = 1
+    , mass = defaultMass
     }
 
 
@@ -246,20 +289,31 @@ randomVelocity seed =
     ( makeVector xx yy, seed4 )
 
 
-randomImage : Seed -> ( Maybe ImageUrls, Seed )
-randomImage seed =
+randomImage : Seed -> List ImageChoice -> ( Maybe ( ImageUrls, Float ), Seed )
+randomImage seed choices =
     let
+        sum =
+            List.foldr (+) 0 (List.map .probability choices)
+
         ( x, seed2 ) =
-            randomFloat 0 1 seed
+            randomFloat 0 sum seed
     in
-    ( chooseImage x, seed2 )
+    ( chooseImage x choices, seed2 )
 
 
-randomObject : Size -> Seed -> ( Object, Seed )
-randomObject size seed =
+randomObject : Size -> Seed -> List ImageChoice -> ( Object, Seed )
+randomObject size seed choices =
     let
-        ( img, seed2 ) =
-            randomImage seed
+        ( im, seed2 ) =
+            randomImage seed choices
+
+        ( img, mass ) =
+            case im of
+                Nothing ->
+                    ( Nothing, defaultMass )
+
+                Just ( im, m ) ->
+                    ( Just im, m )
 
         ( pos, seed3 ) =
             randomPosition size seed2
@@ -267,11 +321,15 @@ randomObject size seed =
         ( vel, seed4 ) =
             randomVelocity seed3
 
+        rect =
+            defaultObject.rect
+
         object =
             { defaultObject
                 | image = img
-                , position = pos
+                , rect = { rect | position = pos }
                 , velocity = vel
+                , mass = mass
             }
     in
     ( object, seed4 )
@@ -280,25 +338,27 @@ randomObject size seed =
 makeInitialObjects : Size -> Seed -> ( List Object, Seed )
 makeInitialObjects size seed =
     let
+        choices =
+            [ zippyChoice ]
+
         ( o1, seed2 ) =
-            randomObject size seed
+            randomObject size seed choices
 
         ( o2, seed3 ) =
-            randomObject size seed2
+            randomObject size seed2 choices
 
         ( o3, seed4 ) =
-            randomObject size seed3
+            randomObject size seed3 choices
     in
     ( [ o1, o2, o3 ], seed4 )
 
 
 initialObject : Object
 initialObject =
-    { size = objectSize
-    , image = Nothing
-    , position = makeVector 200 200
+    { rect = makeRectangle 200 200 0 0
     , velocity = makeVector 0 0
     , mass = 1
+    , image = Nothing
     }
 
 
@@ -306,6 +366,7 @@ initialModel : Model
 initialModel =
     { windowSize = initialSize
     , seed = Random.initialSeed 0
+    , choices = [ zippyChoice ]
     , objects = [ initialObject ]
     , showDialog = False
     , didShow = False
@@ -316,14 +377,16 @@ initialModel =
 init : ( Model, Cmd Msg )
 init =
     initialModel
-        ! [ resizeCmd
-          , Task.perform Initialize Time.now
-          ]
+        ! [ initialSizeCmd ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        InitialSize size ->
+            { model | windowSize = size }
+                ! [ Task.perform Initialize Time.now ]
+
         Resize size ->
             { model | windowSize = size } ! []
 
@@ -369,11 +432,21 @@ update msg model =
                 _ :: tail ->
                     { model | objects = List.reverse tail } ! []
 
+        ToggleChoice choice ->
+            let
+                choices =
+                    if List.member choice model.choices then
+                        List.filter ((/=) choice) model.choices
+                    else
+                        choice :: model.choices
+            in
+            { model | choices = choices } ! []
+
         AddObject object ->
             --current ignores object
             let
                 ( object, seed ) =
-                    randomObject model.windowSize model.seed
+                    randomObject model.windowSize model.seed model.choices
 
                 objects =
                     object :: model.objects
@@ -395,7 +468,7 @@ updateObject : Vector -> List Object -> Object -> Object
 updateObject windowSize objects object =
     let
         pos =
-            object.position
+            object.rect.position
 
         px =
             pos.x
@@ -404,7 +477,7 @@ updateObject windowSize objects object =
             pos.y
 
         size =
-            object.size
+            object.rect.size
 
         sx =
             size.x
@@ -456,8 +529,64 @@ updateObject windowSize objects object =
 
         newv =
             { x = newvx, y = newvy }
+
+        rect =
+            object.rect
     in
-    { object | position = newpos, velocity = newv }
+    { object
+        | rect = { rect | position = newpos }
+        , velocity = newv
+    }
+
+
+processCollisions : List Object -> List Object
+processCollisions objects =
+    let
+        loop : List Object -> List ( Object, Object ) -> List Object -> List Object
+        loop =
+            \obs done res ->
+                case obs of
+                    [] ->
+                        List.reverse res
+
+                    ob :: tail ->
+                        case LE.find (\( o, _ ) -> ob == o) done of
+                            Just ( _, oo ) ->
+                                loop tail done (oo :: res)
+
+                            Nothing ->
+                                case innerLoop ob objects done of
+                                    Nothing ->
+                                        loop tail done (ob :: res)
+
+                                    Just ( o, pair ) ->
+                                        loop tail
+                                            (pair :: ( ob, o ) :: done)
+                                            (o :: res)
+
+        innerLoop : Object -> List Object -> List ( Object, Object ) -> Maybe ( Object, ( Object, Object ) )
+        innerLoop object obs done =
+            case obs of
+                [] ->
+                    Nothing
+
+                ob :: tail ->
+                    if ob == object then
+                        innerLoop object tail done
+                    else
+                        case LE.find (\( o, _ ) -> ob == o) done of
+                            Just _ ->
+                                innerLoop object tail done
+
+                            Nothing ->
+                                case adjustForCollision object ob of
+                                    Nothing ->
+                                        innerLoop object tail done
+
+                                    Just ( objectf, obf ) ->
+                                        Just ( objectf, ( ob, obf ) )
+    in
+    loop objects [] []
 
 
 updateObjects : Model -> Model
@@ -467,9 +596,9 @@ updateObjects model =
             sizeToVector model.windowSize
 
         objects =
-            List.map
-                (updateObject ws model.objects)
-                model.objects
+            model.objects
+                |> processCollisions
+                |> List.map (updateObject ws model.objects)
     in
     { model | objects = objects }
 
@@ -494,7 +623,10 @@ sqrimg url name size =
 
 logoLink : String -> String -> String -> Int -> Html Msg
 logoLink url img name size =
-    a [ href url ]
+    a
+        [ href url
+        , target "_blank"
+        ]
         [ sqrimg ("images/" ++ img) name size ]
 
 
@@ -505,6 +637,39 @@ helpLink string url =
         , target "_blank"
         ]
         [ text string ]
+
+
+isZippy : Model -> Bool
+isZippy model =
+    isChoice zippyChoice model
+
+
+isMilo : Model -> Bool
+isMilo model =
+    isChoice miloChoice model
+
+
+isChoice : ImageChoice -> Model -> Bool
+isChoice choice model =
+    List.member choice model.choices
+
+
+choiceCheckbox : String -> ImageChoice -> Model -> Html Msg
+choiceCheckbox name choice model =
+    checkbox name (isChoice choice model) (ToggleChoice choice)
+
+
+checkbox : String -> Bool -> msg -> Html msg
+checkbox name isChecked msg =
+    label []
+        [ input
+            [ type_ "checkbox"
+            , onClick msg
+            , checked isChecked
+            ]
+            []
+        , text name
+        ]
 
 
 dialog : Model -> Html Msg
@@ -529,6 +694,11 @@ dialog model =
                             "Stop"
                         )
                         (Run run)
+                    ]
+                , div []
+                    [ choiceCheckbox "Zippy" zippyChoice model
+                    , text " "
+                    , choiceCheckbox "Milo" miloChoice model
                     ]
                 , div []
                     [ helpLink "Gib Goy Games" "https://gibgoygames.com/" ]
