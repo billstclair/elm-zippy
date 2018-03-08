@@ -254,12 +254,12 @@ randomBool seed =
 
 minVelocity : Vector
 minVelocity =
-    makeVector 4 2
+    makeVector 4 4
 
 
 maxVelocity : Vector
 maxVelocity =
-    makeVector 12 4
+    makeVector 12 12
 
 
 randomVelocity : Seed -> ( Vector, Seed )
@@ -435,10 +435,7 @@ update msg model =
         ToggleChoice choice ->
             let
                 choices =
-                    if List.member choice model.choices then
-                        List.filter ((/=) choice) model.choices
-                    else
-                        choice :: model.choices
+                    [ choice ]
             in
             { model | choices = choices } ! []
 
@@ -663,7 +660,7 @@ checkbox : String -> Bool -> msg -> Html msg
 checkbox name isChecked msg =
     label []
         [ input
-            [ type_ "checkbox"
+            [ type_ "radio"
             , onClick msg
             , checked isChecked
             ]
