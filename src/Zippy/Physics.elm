@@ -12,6 +12,7 @@
 
 module Zippy.Physics exposing (adjustForCollision)
 
+import Debug exposing (log)
 import Zippy.SharedTypes
     exposing
         ( Object
@@ -58,31 +59,31 @@ objectCollisionSide o1 o2 =
 
         -- impingements of o1 onto o2
         hOverlaps =
-            (l1 > l2 && l1 < r2) || (r1 > l2) && (r1 < r2)
+            (l1 >= l2 && l1 <= r2) || (r1 >= l2) && (r1 <= r2)
 
         bottomImpinges =
-            hOverlaps && b1 >= t2 && b1 < b2 && vy1 > vy2
+            hOverlaps && b1 >= t2 && b1 <= b2 && vy1 > vy2
 
         bottomImpinge =
             b1 - t2
 
         topImpinges =
-            hOverlaps && t1 <= b2 && t1 > t2 && vy1 < vy2
+            hOverlaps && t1 <= b2 && t1 >= t2 && vy1 < vy2
 
         topImpinge =
             b2 - t1
 
         vOverlaps =
-            (b1 > t2 && b1 < b2) || (t1 > t2 && t1 < b2)
+            (b1 >= t2 && b1 <= b2) || (t1 >= t2 && t1 <= b2)
 
         rightImpinges =
-            vOverlaps && r1 >= l2 && r1 < r2 && vx1 > vx2
+            vOverlaps && r1 >= l2 && r1 <= r2 && vx1 > vx2
 
         rightImpinge =
             r1 - l2
 
         leftImpinges =
-            vOverlaps && l1 <= r2 && l1 > l2 && vx1 < vx2
+            vOverlaps && l1 <= r2 && l1 >= l2 && vx1 < vx2
 
         leftImpinge =
             r2 - l1
@@ -105,8 +106,36 @@ objectCollisionSide o1 o2 =
                 Just TopSide
             else
                 Just LeftSide
+        else if rightImpinges then
+            if topImpinge <= rightImpinge then
+                Just TopSide
+            else
+                Just RightSide
         else
             Just TopSide
+    else if bottomImpinges then
+        if leftImpinges then
+            if rightImpinges then
+                if bottomImpinge <= leftImpinge then
+                    if bottomImpinge <= rightImpinge then
+                        Just BottomSide
+                    else
+                        Just RightSide
+                else if leftImpinge <= rightImpinge then
+                    Just LeftSide
+                else
+                    Just RightSide
+            else if bottomImpinge <= leftImpinge then
+                Just BottomSide
+            else
+                Just LeftSide
+        else if rightImpinges then
+            if bottomImpinge <= rightImpinge then
+                Just BottomSide
+            else
+                Just RightSide
+        else
+            Just BottomSide
     else if leftImpinges then
         if rightImpinges then
             if leftImpinge <= rightImpinge then
@@ -138,7 +167,15 @@ adjustForCollision o1 o2 =
             if side == LeftSide || side == RightSide then
                 let
                     ( vxf1, vxf2 ) =
-                        elasticCollision o1.mass vx1 o2.mass vx2
+                        if o1.sticky then
+                            if o2.sticky then
+                                ( vx1, vx2 )
+                            else
+                                ( vx1, -vx2 )
+                        else if o2.sticky then
+                            ( -vx1, vx2 )
+                        else
+                            elasticCollision o1.mass vx1 o2.mass vx2
                 in
                 Just
                     ( { o1 | velocity = makeVector vxf1 vy1 }
@@ -147,7 +184,15 @@ adjustForCollision o1 o2 =
             else
                 let
                     ( vyf1, vyf2 ) =
-                        elasticCollision o1.mass vy1 o2.mass vy2
+                        if o1.sticky then
+                            if o2.sticky then
+                                ( vy1, vy2 )
+                            else
+                                ( vy1, -vy2 )
+                        else if o2.sticky then
+                            ( -vy1, vy2 )
+                        else
+                            elasticCollision o1.mass vy1 o2.mass vy2
                 in
                 Just
                     ( { o1 | velocity = makeVector vx1 vyf1 }

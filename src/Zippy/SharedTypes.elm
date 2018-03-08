@@ -159,5 +159,6 @@ type alias Object =
     { rect : Rectangle
     , velocity : Vector
     , mass : Float
+    , sticky : Bool
     , image : Maybe ImageUrls
     }

@@ -215,6 +215,7 @@ defaultObject =
     , image = Nothing
     , velocity = makeVector 8 4
     , mass = defaultMass
+    , sticky = False
     }
 
 
@@ -335,22 +336,40 @@ randomObject size seed choices =
     ( object, seed4 )
 
 
+initialObjectCount : Int
+initialObjectCount =
+    3
+
+
 makeInitialObjects : Size -> Seed -> ( List Object, Seed )
 makeInitialObjects size seed =
     let
         choices =
             [ zippyChoice ]
 
-        ( o1, seed2 ) =
-            randomObject size seed choices
+        loop : Int -> Seed -> List Object -> ( List Object, Seed )
+        loop =
+            \count seed res ->
+                if count <= 0 then
+                    ( res, seed )
+                else
+                    let
+                        ( object, seed2 ) =
+                            randomObject size seed choices
 
-        ( o2, seed3 ) =
-            randomObject size seed2 choices
-
-        ( o3, seed4 ) =
-            randomObject size seed3 choices
+                        ob =
+                            if count == -1 then
+                                --change to 1 to test
+                                { object
+                                    | sticky = True
+                                    , velocity = zeroVector
+                                }
+                            else
+                                object
+                    in
+                    loop (count - 1) seed2 (ob :: res)
     in
-    ( [ o1, o2, o3 ], seed4 )
+    loop initialObjectCount seed []
 
 
 initialObject : Object
@@ -359,6 +378,7 @@ initialObject =
     , velocity = makeVector 0 0
     , mass = 1
     , image = Nothing
+    , sticky = False
     }
 
 
@@ -509,18 +529,30 @@ updateObject windowSize objects object =
             }
 
         newvx =
-            if vx > 0 && right >= w then
-                -vx
-            else if vx < 0 && px <= 0 then
-                -vx
+            if vx >= 0 && right >= w then
+                if vx == 0 then
+                    -1
+                else
+                    -vx
+            else if vx <= 0 && px <= 0 then
+                if vx == 0 then
+                    1
+                else
+                    -vx
             else
                 vx
 
         newvy =
-            if vy > 0 && bottom >= h then
-                -vy
-            else if vy < 0 && py <= 0 then
-                -vy
+            if vy >= 0 && bottom >= h then
+                if vy == 0 then
+                    -1
+                else
+                    -vy
+            else if vy <= 0 && py <= 0 then
+                if vy == 0 then
+                    1
+                else
+                    -vy
             else
                 vy
 
@@ -552,14 +584,12 @@ processCollisions objects =
                                 loop tail done (oo :: res)
 
                             Nothing ->
-                                case innerLoop ob objects done of
+                                case innerLoop ob tail done of
                                     Nothing ->
                                         loop tail done (ob :: res)
 
                                     Just ( o, pair ) ->
-                                        loop tail
-                                            (pair :: ( ob, o ) :: done)
-                                            (o :: res)
+                                        loop tail (pair :: done) (o :: res)
 
         innerLoop : Object -> List Object -> List ( Object, Object ) -> Maybe ( Object, ( Object, Object ) )
         innerLoop object obs done =
@@ -568,20 +598,17 @@ processCollisions objects =
                     Nothing
 
                 ob :: tail ->
-                    if ob == object then
-                        innerLoop object tail done
-                    else
-                        case LE.find (\( o, _ ) -> ob == o) done of
-                            Just _ ->
-                                innerLoop object tail done
+                    case LE.find (\( o, _ ) -> ob == o) done of
+                        Just _ ->
+                            innerLoop object tail done
 
-                            Nothing ->
-                                case adjustForCollision object ob of
-                                    Nothing ->
-                                        innerLoop object tail done
+                        Nothing ->
+                            case adjustForCollision object ob of
+                                Nothing ->
+                                    innerLoop object tail done
 
-                                    Just ( objectf, obf ) ->
-                                        Just ( objectf, ( ob, obf ) )
+                                Just ( objectf, obf ) ->
+                                    Just ( objectf, ( ob, obf ) )
     in
     loop objects [] []
 
