@@ -15,9 +15,9 @@ module Zippy.Physics exposing (adjustForCollision)
 import Debug exposing (log)
 import Zippy.SharedTypes
     exposing
-        ( Object
+        ( Direction(..)
+        , Object
         , Rectangle
-        , Side(..)
         , Vector
         , makeVector
         , rectangleCoordinates
@@ -42,8 +42,8 @@ elasticCollision m1 v1 m2 v2 =
     ( v1f, v2f )
 
 
-objectCollisionSide : Object -> Object -> Maybe Side
-objectCollisionSide o1 o2 =
+objectCollisionDirection : Object -> Object -> Maybe Direction
+objectCollisionDirection o1 o2 =
     let
         ( l1, t1, r1, b1 ) =
             rectangleCoordinates o1.rect
@@ -87,76 +87,40 @@ objectCollisionSide o1 o2 =
 
         leftImpinge =
             r2 - l1
+
+        vertImpinges =
+            topImpinges || bottomImpinges
+
+        vertImpinge =
+            min topImpinge bottomImpinge
+
+        horImpinges =
+            leftImpinges || rightImpinges
+
+        horImpinge =
+            min leftImpinge rightImpinge
     in
-    if topImpinges then
-        if leftImpinges then
-            if rightImpinges then
-                if topImpinge <= leftImpinge then
-                    if topImpinge <= rightImpinge then
-                        Just TopSide
-                    else if leftImpinge <= rightImpinge then
-                        Just LeftSide
-                    else
-                        Just RightSide
-                else if leftImpinge <= rightImpinge then
-                    Just LeftSide
-                else
-                    Just RightSide
-            else if topImpinge <= leftImpinge then
-                Just TopSide
+    if vertImpinges then
+        if horImpinges then
+            if vertImpinge <= horImpinge then
+                Just Vertical
             else
-                Just LeftSide
-        else if rightImpinges then
-            if topImpinge <= rightImpinge then
-                Just TopSide
-            else
-                Just RightSide
+                Just Horizontal
         else
-            Just TopSide
-    else if bottomImpinges then
-        if leftImpinges then
-            if rightImpinges then
-                if bottomImpinge <= leftImpinge then
-                    if bottomImpinge <= rightImpinge then
-                        Just BottomSide
-                    else
-                        Just RightSide
-                else if leftImpinge <= rightImpinge then
-                    Just LeftSide
-                else
-                    Just RightSide
-            else if bottomImpinge <= leftImpinge then
-                Just BottomSide
-            else
-                Just LeftSide
-        else if rightImpinges then
-            if bottomImpinge <= rightImpinge then
-                Just BottomSide
-            else
-                Just RightSide
-        else
-            Just BottomSide
-    else if leftImpinges then
-        if rightImpinges then
-            if leftImpinge <= rightImpinge then
-                Just LeftSide
-            else
-                Just RightSide
-        else
-            Just LeftSide
-    else if rightImpinges then
-        Just RightSide
+            Just Vertical
+    else if horImpinges then
+        Just Horizontal
     else
         Nothing
 
 
 adjustForCollision : Object -> Object -> Maybe ( Object, Object )
 adjustForCollision o1 o2 =
-    case objectCollisionSide o1 o2 of
+    case objectCollisionDirection o1 o2 of
         Nothing ->
             Nothing
 
-        Just side ->
+        Just dir ->
             let
                 ( vx1, vy1 ) =
                     vectorCoordinates o1.velocity
@@ -164,7 +128,7 @@ adjustForCollision o1 o2 =
                 ( vx2, vy2 ) =
                     vectorCoordinates o2.velocity
             in
-            if side == LeftSide || side == RightSide then
+            if dir == Horizontal then
                 let
                     ( vxf1, vxf2 ) =
                         if o1.sticky then

@@ -12,12 +12,12 @@
 
 module Zippy.SharedTypes
     exposing
-        ( ImageChoice
+        ( Direction(..)
+        , ImageChoice
         , ImageUrls
         , Msg(..)
         , Object
         , Rectangle
-        , Side(..)
         , Vector
         , makeRectangle
         , makeSize
@@ -56,11 +56,9 @@ type alias ImageChoice =
     }
 
 
-type Side
-    = LeftSide
-    | RightSide
-    | TopSide
-    | BottomSide
+type Direction
+    = Horizontal
+    | Vertical
 
 
 type alias Vector =
