@@ -127,38 +127,26 @@ adjustForCollision o1 o2 =
 
                 ( vx2, vy2 ) =
                     vectorCoordinates o2.velocity
+
+                doCollision =
+                    \v1 v2 ->
+                        if o1.sticky then
+                            if o2.sticky then
+                                ( v1, v2 )
+                            else
+                                ( v1, -v2 )
+                        else if o2.sticky then
+                            ( -v1, v2 )
+                        else
+                            elasticCollision o1.mass v1 o2.mass v2
+
+                ( ( vxf1, vxf2 ), ( vyf1, vyf2 ) ) =
+                    if dir == Horizontal then
+                        ( doCollision vx1 vx2, ( vy1, vy2 ) )
+                    else
+                        ( ( vx1, vx2 ), doCollision vy1 vy2 )
             in
-            if dir == Horizontal then
-                let
-                    ( vxf1, vxf2 ) =
-                        if o1.sticky then
-                            if o2.sticky then
-                                ( vx1, vx2 )
-                            else
-                                ( vx1, -vx2 )
-                        else if o2.sticky then
-                            ( -vx1, vx2 )
-                        else
-                            elasticCollision o1.mass vx1 o2.mass vx2
-                in
-                Just
-                    ( { o1 | velocity = makeVector vxf1 vy1 }
-                    , { o2 | velocity = makeVector vxf2 vy2 }
-                    )
-            else
-                let
-                    ( vyf1, vyf2 ) =
-                        if o1.sticky then
-                            if o2.sticky then
-                                ( vy1, vy2 )
-                            else
-                                ( vy1, -vy2 )
-                        else if o2.sticky then
-                            ( -vy1, vy2 )
-                        else
-                            elasticCollision o1.mass vy1 o2.mass vy2
-                in
-                Just
-                    ( { o1 | velocity = makeVector vx1 vyf1 }
-                    , { o2 | velocity = makeVector vx2 vyf2 }
-                    )
+            Just
+                ( { o1 | velocity = makeVector vxf1 vyf1 }
+                , { o2 | velocity = makeVector vxf2 vyf2 }
+                )
