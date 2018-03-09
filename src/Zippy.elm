@@ -421,17 +421,18 @@ makeInitialObjects model =
             model.seed
 
         choices =
-            allChoices
+            [ zippyChoice, mrNaturalChoice, miloChoice, zippyChoice ]
 
-        loop : Int -> Model -> Model
-        loop =
-            \count mdl ->
-                if count <= 0 then
+        loop : List ImageChoice -> Model -> Model
+        loop choices mdl =
+            case choices of
+                [] ->
                     mdl
-                else
-                    loop (count - 1) <| addRandomObject choices mdl
+
+                choice :: tail ->
+                    loop tail <| addRandomObject [ choice ] mdl
     in
-    loop initialObjectCount model
+    loop choices model
 
 
 initialModel : Model
