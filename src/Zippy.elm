@@ -731,7 +731,8 @@ dialog model =
                         "elm-logo-125x125.png"
                         "Elm inside"
                         28
-                    , logoLink "https://github.com/billstclair/kakuro-master"
+                    , text " "
+                    , logoLink "https://github.com/billstclair/elm-zippy"
                         "GitHub-Mark-32px.png"
                         "GitHub source code"
                         32
