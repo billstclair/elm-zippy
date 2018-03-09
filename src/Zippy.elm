@@ -927,9 +927,12 @@ dialog model =
         , content =
             [ div [ align "center" ]
                 [ div []
-                    [ btn "Clear" Clear
-                    , btn "Add" <| AddObject
+                    [ btn "Add" <| AddObject
+                    , text " "
                     , btn "Remove" <| RemoveObject
+                    , text " "
+                    , btn "Clear" Clear
+                    , text " "
                     , btn
                         (if run then
                             "Run"
@@ -938,7 +941,7 @@ dialog model =
                         )
                         (Run run)
                     ]
-                , div []
+                , p []
                     [ choiceCheckbox "Zippy" zippyChoice model
                     , text " "
                     , choiceCheckbox "Mr. Natural" mrNaturalChoice model
@@ -946,6 +949,18 @@ dialog model =
                     , choiceCheckbox "Milo" miloChoice model
                     ]
                 , div []
+                    [ lines
+                        [ "Choose a character and click 'Add' to add it."
+                        , "Click 'Remove' to remove the least-recently added character."
+                        , "Click 'Clear' to remove all characters."
+                        , "Click 'Stop' to stop animation, and 'Run' to restart it."
+                        , "Click on the board to pick up the nearest character."
+                        , "Move the mouse to drag it around."
+                        , "If you let the mouse up while stationary, it will get a random velocity."
+                        , "Click 'Close Dialog' below to get rid of this."
+                        ]
+                    ]
+                , p []
                     [ helpLink "Gib Goy Games" "https://gibgoygames.com/" ]
                 , div []
                     [ logoLink "http://elm-lang.org/"
@@ -958,7 +973,7 @@ dialog model =
                         "GitHub source code"
                         32
                     ]
-                , div []
+                , p []
                     [ btn "Close Dialog" <| ShowDialog False ]
                 ]
             ]
@@ -966,6 +981,16 @@ dialog model =
             []
         }
         True
+
+
+br : Html msg
+br =
+    Html.br [] []
+
+
+lines : List String -> Html Msg
+lines strings =
+    p [] (List.concatMap (\s -> [ text s, br ]) strings)
 
 
 view : Model -> Html Msg
@@ -1004,7 +1029,10 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Window.resizes Resize
-        , AnimationFrame.times (\_ -> Update)
+        , if model.running then
+            AnimationFrame.times (\_ -> Update)
+          else
+            Sub.none
         , Mouse.downs MouseDown
         , Mouse.ups MouseUp
         , if model.grabbedIndex >= 0 then
