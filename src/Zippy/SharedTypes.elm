@@ -14,7 +14,7 @@ module Zippy.SharedTypes
     exposing
         ( Direction(..)
         , ImageChoice
-        , ImageUrls
+        , ImageUrl
         , Msg(..)
         , Object
         , Rectangle
@@ -62,7 +62,7 @@ type Msg
 
 
 type alias ImageChoice =
-    { image : ImageUrls
+    { image : ImageUrl
     , mass : Float
     , probability : Float
     }
@@ -212,10 +212,8 @@ makeSize w h =
     { width = w, height = h }
 
 
-type alias ImageUrls =
-    { right : String
-    , left : String
-    }
+type alias ImageUrl =
+    String
 
 
 {-| For now, objects are all rectangular
@@ -226,5 +224,5 @@ type alias Object =
     , velocity : Vector
     , mass : Float
     , sticky : Bool
-    , image : Maybe ImageUrls
+    , image : Maybe ImageUrl
     }

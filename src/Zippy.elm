@@ -71,7 +71,7 @@ import Zippy.Render exposing (renderList, renderObject)
 import Zippy.SharedTypes
     exposing
         ( ImageChoice
-        , ImageUrls
+        , ImageUrl
         , Msg(..)
         , Object
         , Rectangle
@@ -155,11 +155,9 @@ objectSize =
     makeVector 160 200
 
 
-zippy : ImageUrls
+zippy : ImageUrl
 zippy =
-    { left = "images/zippy-left.jpg"
-    , right = "images/zippy-right.jpg"
-    }
+    "images/zippy-left.jpg"
 
 
 zippyMass : Float
@@ -167,11 +165,9 @@ zippyMass =
     2
 
 
-milo : ImageUrls
+milo : ImageUrl
 milo =
-    { left = "images/milo-cartoon-left.jpg"
-    , right = "images/milo-cartoon-right.jpg"
-    }
+    "images/milo-cartoon-left.jpg"
 
 
 miloMass : Float
@@ -179,11 +175,9 @@ miloMass =
     1
 
 
-mrNatural : ImageUrls
+mrNatural : ImageUrl
 mrNatural =
-    { left = "images/mr-natural-left.jpg"
-    , right = "images/mr-natural-right.jpg"
-    }
+    "images/mr-natural-left.jpg"
 
 
 mrNaturalMass : Float
@@ -225,7 +219,7 @@ allChoices =
     ]
 
 
-chooseImage : Float -> List ImageChoice -> Maybe ( ImageUrls, Float )
+chooseImage : Float -> List ImageChoice -> Maybe ( ImageUrl, Float )
 chooseImage x choices =
     let
         loop =
@@ -345,7 +339,7 @@ randomVelocity seed =
     ( makeVector xx yy, seed4 )
 
 
-randomImage : Seed -> List ImageChoice -> ( Maybe ( ImageUrls, Float ), Seed )
+randomImage : Seed -> List ImageChoice -> ( Maybe ( ImageUrl, Float ), Seed )
 randomImage seed choices =
     let
         sum =

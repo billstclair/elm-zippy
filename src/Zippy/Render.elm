@@ -39,6 +39,7 @@ import Zippy.SharedTypes
         , Vector
         , makeSize
         , makeVector
+        , rectangleCoordinates
         , zeroVector
         )
 import Zippy.Styles as Styles exposing (SClass(..), classes)
@@ -66,30 +67,21 @@ renderObject object =
         vx =
             object.velocity.x
 
-        maybeImage =
-            object.image
-
-        ( leftImage, rightImage ) =
-            case maybeImage of
-                Nothing ->
-                    ( Nothing, Nothing )
-
-                Just { left, right } ->
-                    ( Just left
-                    , if right == "" then
-                        Just left
-                      else
-                        Just right
-                    )
-
-        img =
+        trans =
             if vx < 0 then
-                leftImage
+                ""
             else
-                rightImage
+                let
+                    ( left, _, right, _ ) =
+                        rectangleCoordinates object.rect
+
+                    tr =
+                        toString (left + right)
+                in
+                "translate(" ++ tr ++ ",0) scale(-1, 1)"
 
         pict =
-            case img of
+            case object.image of
                 Nothing ->
                     []
 
@@ -100,6 +92,7 @@ renderObject object =
                         , y <| toString (pos.y + 1)
                         , width <| toString (size.x - 2)
                         , height <| toString (size.y - 2)
+                        , transform trans
                         ]
                         []
                     ]
