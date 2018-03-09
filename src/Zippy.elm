@@ -179,6 +179,18 @@ miloMass =
     1
 
 
+mrNatural : ImageUrls
+mrNatural =
+    { left = "images/mr-natural-left.jpg"
+    , right = "images/mr-natural-right.jpg"
+    }
+
+
+mrNaturalMass : Float
+mrNaturalMass =
+    3
+
+
 zippyChoice : ImageChoice
 zippyChoice =
     { image = zippy
@@ -195,12 +207,21 @@ miloChoice =
     }
 
 
+mrNaturalChoice : ImageChoice
+mrNaturalChoice =
+    { image = mrNatural
+    , mass = mrNaturalMass
+    , probability = 0.25
+    }
+
+
 {-| chooseImage expects probabilities to add to 1.
 -}
 allChoices : List ImageChoice
 allChoices =
     [ zippyChoice
     , miloChoice
+    , mrNaturalChoice
     ]
 
 
@@ -549,26 +570,29 @@ update msg model =
             model ! []
 
         MouseDown pos ->
-            let
-                vect =
-                    positionToVector pos
-            in
-            case findClosestObject vect model of
-                Nothing ->
-                    model ! []
+            if model.showDialog || pos.y < 50 then
+                model ! []
+            else
+                let
+                    vect =
+                        positionToVector pos
+                in
+                case findClosestObject vect model of
+                    Nothing ->
+                        model ! []
 
-                Just ob ->
-                    let
-                        mdl =
-                            { model
-                                | grabbedIndex = ob.index
-                                , grabbedOffset =
-                                    vectorDifference
-                                        ob.rect.pos
-                                        (rectangleCenter ob.rect)
-                            }
-                    in
-                    update (MouseMove pos) mdl
+                    Just ob ->
+                        let
+                            mdl =
+                                { model
+                                    | grabbedIndex = ob.index
+                                    , grabbedOffset =
+                                        vectorDifference
+                                            ob.rect.pos
+                                            (rectangleCenter ob.rect)
+                                }
+                        in
+                        update (MouseMove pos) mdl
 
         MouseUp pos ->
             let
@@ -863,6 +887,11 @@ isMilo model =
     isChoice miloChoice model
 
 
+isMrNatural : Model -> Bool
+isMrNatural model =
+    isChoice mrNaturalChoice model
+
+
 isChoice : ImageChoice -> Model -> Bool
 isChoice choice model =
     List.member choice model.choices
@@ -911,6 +940,8 @@ dialog model =
                     ]
                 , div []
                     [ choiceCheckbox "Zippy" zippyChoice model
+                    , text " "
+                    , choiceCheckbox "Mr. Natural" mrNaturalChoice model
                     , text " "
                     , choiceCheckbox "Milo" miloChoice model
                     ]
@@ -966,6 +997,9 @@ refreshPeriod =
     20 * Time.millisecond
 
 
+{-| Need to integrate
+<http://package.elm-lang.org/packages/knledg/touch-events/latest>
+-}
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
