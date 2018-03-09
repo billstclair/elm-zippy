@@ -51,7 +51,7 @@ renderObject object =
             object.rect.size
 
         pos =
-            object.rect.position
+            object.rect.pos
 
         box =
             rect

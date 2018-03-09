@@ -61,6 +61,7 @@ import Html.Attributes
 import Html.Events exposing (onClick, onInput)
 import Keyboard exposing (KeyCode)
 import List.Extra as LE
+import Mouse exposing (Position)
 import Random exposing (Seed)
 import Task
 import Time exposing (Time)
@@ -75,11 +76,17 @@ import Zippy.SharedTypes
         , Object
         , Rectangle
         , Vector
+        , distanceToRectangle
+        , isVectorInRectangle
         , makeRectangle
         , makeSize
         , makeVector
+        , positionToVector
+        , rectangleCenter
         , rectangleFromVectors
         , sizeToVector
+        , vectorDifference
+        , vectorSum
         , zeroRectangle
         , zeroVector
         )
@@ -107,7 +114,33 @@ type alias Model =
     , showDialog : Bool
     , didShow : Bool
     , running : Bool
+    , index : Int
+    , grabbedIndex : Int
+    , grabbedOffset : Vector
+    , grabbedPos : Vector
     }
+
+
+nextIndex : Model -> ( Int, Model )
+nextIndex model =
+    let
+        index =
+            model.index + 1
+    in
+    ( index
+    , { model | index = index }
+    )
+
+
+setObjectIndex : Object -> Model -> ( Object, Model )
+setObjectIndex object model =
+    let
+        ( index, mdl ) =
+            nextIndex model
+    in
+    ( { object | index = index }
+    , mdl
+    )
 
 
 initialSize : Size
@@ -211,7 +244,8 @@ defaultMass =
 
 defaultObject : Object
 defaultObject =
-    { rect = defaultObjectRect
+    { index = -1
+    , rect = defaultObjectRect
     , image = Nothing
     , velocity = makeVector 8 4
     , mass = defaultMass
@@ -328,7 +362,7 @@ randomObject size seed choices =
         object =
             { defaultObject
                 | image = img
-                , rect = { rect | position = pos }
+                , rect = { rect | pos = pos }
                 , velocity = vel
                 , mass = mass
             }
@@ -341,45 +375,42 @@ initialObjectCount =
     3
 
 
-makeInitialObjects : Size -> Seed -> ( List Object, Seed )
-makeInitialObjects size seed =
+addRandomObject : List ImageChoice -> Model -> Model
+addRandomObject choices model =
     let
-        choices =
-            [ zippyChoice ]
+        ( object, seed ) =
+            randomObject model.windowSize model.seed choices
 
-        loop : Int -> Seed -> List Object -> ( List Object, Seed )
-        loop =
-            \count seed res ->
-                if count <= 0 then
-                    ( res, seed )
-                else
-                    let
-                        ( object, seed2 ) =
-                            randomObject size seed choices
-
-                        ob =
-                            if count == -1 then
-                                --change to 1 to test
-                                { object
-                                    | sticky = True
-                                    , velocity = zeroVector
-                                }
-                            else
-                                object
-                    in
-                    loop (count - 1) seed2 (ob :: res)
+        ( ob, mdl ) =
+            setObjectIndex object model
     in
-    loop initialObjectCount seed []
-
-
-initialObject : Object
-initialObject =
-    { rect = makeRectangle 200 200 0 0
-    , velocity = makeVector 0 0
-    , mass = 1
-    , image = Nothing
-    , sticky = False
+    { mdl
+        | objects = List.append mdl.objects [ log "object" ob ]
+        , seed = seed
     }
+
+
+makeInitialObjects : Model -> Model
+makeInitialObjects model =
+    let
+        size =
+            model.windowSize
+
+        seed =
+            model.seed
+
+        choices =
+            allChoices
+
+        loop : Int -> Model -> Model
+        loop =
+            \count mdl ->
+                if count <= 0 then
+                    mdl
+                else
+                    loop (count - 1) <| addRandomObject choices mdl
+    in
+    loop initialObjectCount model
 
 
 initialModel : Model
@@ -387,10 +418,14 @@ initialModel =
     { windowSize = initialSize
     , seed = Random.initialSeed 0
     , choices = [ zippyChoice ]
-    , objects = [ initialObject ]
+    , objects = []
     , showDialog = False
     , didShow = False
     , running = True
+    , index = -1
+    , grabbedIndex = -1
+    , grabbedOffset = zeroVector
+    , grabbedPos = zeroVector
     }
 
 
@@ -415,18 +450,66 @@ update msg model =
                 seed =
                     Random.initialSeed (truncate time)
 
-                ( objects, seed2 ) =
-                    makeInitialObjects model.windowSize seed
+                mdl =
+                    makeInitialObjects { model | seed = seed }
             in
-            { model
-                | seed = seed2
-                , objects = objects
-            }
-                ! []
+            mdl ! []
 
         Update ->
             if model.running then
-                updateObjects model ! []
+                let
+                    index =
+                        model.grabbedIndex
+
+                    grabbed =
+                        LE.find (\ob -> ob.index == index) model.objects
+
+                    mdl =
+                        updateObjects model
+                in
+                case grabbed of
+                    Nothing ->
+                        mdl ! []
+
+                    Just go ->
+                        let
+                            updater =
+                                \ob ->
+                                    let
+                                        rect =
+                                            ob.rect
+                                    in
+                                    { ob
+                                        | rect = { rect | pos = go.rect.pos }
+                                        , velocity = zeroVector
+                                    }
+
+                            ( mob, mdl2 ) =
+                                updateObjectAtIndex updater index mdl
+                        in
+                        case mob of
+                            Nothing ->
+                                mdl2 ! []
+
+                            Just ob ->
+                                let
+                                    pos =
+                                        mdl2.grabbedPos
+
+                                    newpos =
+                                        ob.rect.pos
+
+                                    vel =
+                                        vectorDifference newpos pos
+
+                                    ( _, mdl3 ) =
+                                        updateObjectAtIndex
+                                            (\ob -> { ob | velocity = vel })
+                                            ob.index
+                                            mdl2
+                                in
+                                { mdl3 | grabbedPos = newpos }
+                                    ! []
             else
                 model ! []
 
@@ -443,8 +526,7 @@ update msg model =
         Clear ->
             { model | objects = [] } ! []
 
-        RemoveObject object ->
-            --currently ignores object
+        RemoveObject ->
             case List.reverse model.objects of
                 [] ->
                     model ! []
@@ -459,33 +541,141 @@ update msg model =
             in
             { model | choices = choices } ! []
 
-        AddObject object ->
-            --current ignores object
-            let
-                ( object, seed ) =
-                    randomObject model.windowSize model.seed model.choices
-
-                objects =
-                    object :: model.objects
-            in
-            { model
-                | objects = objects
-                , seed = seed
-            }
+        AddObject ->
+            addRandomObject model.choices model
                 ! []
 
         SelectObject object ->
             model ! []
 
+        MouseDown pos ->
+            let
+                vect =
+                    positionToVector pos
+            in
+            case findClosestObject vect model of
+                Nothing ->
+                    model ! []
+
+                Just ob ->
+                    let
+                        mdl =
+                            { model
+                                | grabbedIndex = ob.index
+                                , grabbedOffset =
+                                    vectorDifference
+                                        ob.rect.pos
+                                        (rectangleCenter ob.rect)
+                            }
+                    in
+                    update (MouseMove pos) mdl
+
+        MouseUp pos ->
+            let
+                ( vel, seed ) =
+                    randomVelocity model.seed
+
+                mdl2 =
+                    { model | seed = seed }
+
+                updater =
+                    \ob ->
+                        if ob.velocity == zeroVector then
+                            { ob | velocity = vel }
+                        else
+                            ob
+
+                ( _, mdl3 ) =
+                    updateObjectAtIndex updater model.grabbedIndex mdl2
+            in
+            { mdl3 | grabbedIndex = -1 } ! []
+
+        MouseMove pos ->
+            let
+                index =
+                    model.grabbedIndex
+
+                offset =
+                    model.grabbedOffset
+
+                vect =
+                    positionToVector pos
+
+                updater =
+                    \ob ->
+                        let
+                            rect =
+                                ob.rect
+                        in
+                        { ob
+                            | rect = { rect | pos = vectorSum vect offset }
+                        }
+            in
+            if index < 0 then
+                model ! []
+            else
+                let
+                    ( _, mdl ) =
+                        updateObjectAtIndex updater index model
+                in
+                mdl ! []
+
         Nop ->
             model ! []
+
+
+findClosestObject : Vector -> Model -> Maybe Object
+findClosestObject vect model =
+    List.foldr
+        (\ob ( o, min ) ->
+            let
+                d =
+                    distanceToRectangle vect ob.rect
+            in
+            if d < min then
+                ( Just ob, d )
+            else
+                ( o, min )
+        )
+        ( Nothing, 1000000 )
+        model.objects
+        |> Tuple.first
+
+
+updateObjectAtIndex : (Object -> Object) -> Int -> Model -> ( Maybe Object, Model )
+updateObjectAtIndex f index model =
+    let
+        loop : List Object -> List Object -> ( Maybe Object, Model )
+        loop =
+            \objects res ->
+                case objects of
+                    [] ->
+                        ( Nothing, model )
+
+                    ob :: tail ->
+                        if index /= ob.index then
+                            loop tail (ob :: res)
+                        else
+                            let
+                                ob2 =
+                                    f ob
+                            in
+                            ( Just ob2
+                            , { model
+                                | objects =
+                                    List.concat
+                                        [ List.reverse res, ob2 :: tail ]
+                              }
+                            )
+    in
+    loop model.objects []
 
 
 updateObject : Vector -> List Object -> Object -> Object
 updateObject windowSize objects object =
     let
         pos =
-            object.rect.position
+            object.rect.pos
 
         px =
             pos.x
@@ -563,7 +753,7 @@ updateObject windowSize objects object =
             object.rect
     in
     { object
-        | rect = { rect | position = newpos }
+        | rect = { rect | pos = newpos }
         , velocity = newv
     }
 
@@ -709,8 +899,8 @@ dialog model =
             [ div [ align "center" ]
                 [ div []
                     [ btn "Clear" Clear
-                    , btn "Add" <| AddObject initialObject
-                    , btn "Remove" <| RemoveObject initialObject
+                    , btn "Add" <| AddObject
+                    , btn "Remove" <| RemoveObject
                     , btn
                         (if run then
                             "Run"
@@ -781,4 +971,10 @@ subscriptions model =
     Sub.batch
         [ Window.resizes Resize
         , AnimationFrame.times (\_ -> Update)
+        , Mouse.downs MouseDown
+        , Mouse.ups MouseUp
+        , if model.grabbedIndex >= 0 then
+            Mouse.moves MouseMove
+          else
+            Sub.none
         ]
