@@ -169,8 +169,8 @@ zippyMass =
 
 milo : ImageUrls
 milo =
-    { left = "images/milo-head-left.jpg"
-    , right = "images/milo-head-right.jpg"
+    { left = "images/milo-cartoon-left.jpg"
+    , right = "images/milo-cartoon-right.jpg"
     }
 
 
