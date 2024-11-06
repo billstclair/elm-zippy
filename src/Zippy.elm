@@ -236,6 +236,7 @@ chooseImage x choices =
                     head :: tail ->
                         if x <= head.probability then
                             Just ( head.image, head.mass )
+
                         else
                             loop (x - head.probability) tail
     in
@@ -327,12 +328,14 @@ randomVelocity seed =
         xx =
             if negx then
                 -x
+
             else
                 x
 
         yy =
             if negy then
                 -y
+
             else
                 y
     in
@@ -447,19 +450,23 @@ initialModel =
 
 init : ( Model, Cmd Msg )
 init =
-    initialModel
-        ! [ initialSizeCmd ]
+    ( initialModel
+    , initialSizeCmd
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InitialSize size ->
-            { model | windowSize = size }
-                ! [ Task.perform Initialize Time.now ]
+            ( { model | windowSize = size }
+            , Task.perform Initialize Time.now
+            )
 
         Resize size ->
-            { model | windowSize = size } ! []
+            ( { model | windowSize = size }
+            , Cmd.none
+            )
 
         Initialize time ->
             let
@@ -469,7 +476,9 @@ update msg model =
                 mdl =
                     makeInitialObjects { model | seed = seed }
             in
-            mdl ! []
+            ( mdl
+            , Cmd.none
+            )
 
         Update ->
             if model.running then
@@ -485,7 +494,9 @@ update msg model =
                 in
                 case grabbed of
                     Nothing ->
-                        mdl ! []
+                        ( mdl
+                        , Cmd.none
+                        )
 
                     Just go ->
                         let
@@ -505,7 +516,9 @@ update msg model =
                         in
                         case mob of
                             Nothing ->
-                                mdl2 ! []
+                                ( mdl2
+                                , Cmd.none
+                                )
 
                             Just ob ->
                                 let
@@ -524,49 +537,70 @@ update msg model =
                                             ob.index
                                             mdl2
                                 in
-                                { mdl3 | grabbedPos = newpos }
-                                    ! []
+                                ( { mdl3 | grabbedPos = newpos }
+                                , Cmd.none
+                                )
+
             else
-                model ! []
+                ( model
+                , Cmd.none
+                )
 
         ShowDialog show ->
-            { model
+            ( { model
                 | showDialog = show
                 , didShow = model.didShow || show
-            }
-                ! []
+              }
+            , Cmd.none
+            )
 
         Run run ->
-            { model | running = run } ! []
+            ( { model | running = run }
+            , Cmd.none
+            )
 
         Clear ->
-            { model | objects = [] } ! []
+            ( { model | objects = [] }
+            , Cmd.none
+            )
 
         RemoveObject ->
             case List.reverse model.objects of
                 [] ->
-                    model ! []
+                    ( model
+                    , Cmd.none
+                    )
 
                 _ :: tail ->
-                    { model | objects = List.reverse tail } ! []
+                    ( { model | objects = List.reverse tail }
+                    , Cmd.none
+                    )
 
         ToggleChoice choice ->
             let
                 choices =
                     [ choice ]
             in
-            { model | choices = choices } ! []
+            ( { model | choices = choices }
+            , Cmd.none
+            )
 
         AddObject ->
-            addRandomObject model.choices model
-                ! []
+            ( addRandomObject model.choices model
+            , Cmd.none
+            )
 
         SelectObject object ->
-            model ! []
+            ( model
+            , Cmd.none
+            )
 
         MouseDown pos ->
             if model.showDialog || pos.y < 50 then
-                model ! []
+                ( model
+                , Cmd.none
+                )
+
             else
                 let
                     vect =
@@ -574,7 +608,9 @@ update msg model =
                 in
                 case findClosestObject vect model of
                     Nothing ->
-                        model ! []
+                        ( model
+                        , Cmd.none
+                        )
 
                     Just ob ->
                         let
@@ -601,13 +637,16 @@ update msg model =
                     \ob ->
                         if ob.velocity == zeroVector then
                             { ob | velocity = vel }
+
                         else
                             ob
 
                 ( _, mdl3 ) =
                     updateObjectAtIndex updater model.grabbedIndex mdl2
             in
-            { mdl3 | grabbedIndex = -1 } ! []
+            ( { mdl3 | grabbedIndex = -1 }
+            , Cmd.none
+            )
 
         MouseMove pos ->
             let
@@ -631,16 +670,23 @@ update msg model =
                         }
             in
             if index < 0 then
-                model ! []
+                ( model
+                , Cmd.none
+                )
+
             else
                 let
                     ( _, mdl ) =
                         updateObjectAtIndex updater index model
                 in
-                mdl ! []
+                ( mdl
+                , Cmd.none
+                )
 
         Nop ->
-            model ! []
+            ( model
+            , Cmd.none
+            )
 
 
 findClosestObject : Vector -> Model -> Maybe Object
@@ -653,6 +699,7 @@ findClosestObject vect model =
             in
             if d < min then
                 ( Just ob, d )
+
             else
                 ( o, min )
         )
@@ -674,6 +721,7 @@ updateObjectAtIndex f index model =
                     ob :: tail ->
                         if index /= ob.index then
                             loop tail (ob :: res)
+
                         else
                             let
                                 ob2 =
@@ -741,13 +789,17 @@ updateObject windowSize objects object =
             if vx >= 0 && right >= w then
                 if vx == 0 then
                     -1
+
                 else
                     -vx
+
             else if vx <= 0 && px <= 0 then
                 if vx == 0 then
                     1
+
                 else
                     -vx
+
             else
                 vx
 
@@ -755,13 +807,17 @@ updateObject windowSize objects object =
             if vy >= 0 && bottom >= h then
                 if vy == 0 then
                     -1
+
                 else
                     -vy
+
             else if vy <= 0 && py <= 0 then
                 if vy == 0 then
                     1
+
                 else
                     -vy
+
             else
                 vy
 
@@ -931,6 +987,7 @@ dialog model =
                     , btn
                         (if run then
                             "Run"
+
                          else
                             "Stop"
                         )
@@ -993,18 +1050,18 @@ view model =
     div []
         [ if model.showDialog then
             dialog model
+
           else
             button
                 [ onClick <| ShowDialog True
-                , style
-                    [ ( "position", "fixed" )
-                    , ( "top", "10px" )
-                    , ( "left", "10px" )
-                    ]
+                , style "position" "fixed"
+                , style "top" "10px"
+                , style "left" "10px"
                 ]
                 [ text <|
                     if model.didShow then
                         "+"
+
                     else
                         "Click Me!"
                 ]
@@ -1026,12 +1083,14 @@ subscriptions model =
         [ Window.resizes Resize
         , if model.running then
             AnimationFrame.times (\_ -> Update)
+
           else
             Sub.none
         , Mouse.downs MouseDown
         , Mouse.ups MouseUp
         , if model.grabbedIndex >= 0 then
             Mouse.moves MouseMove
+
           else
             Sub.none
         ]

@@ -70,6 +70,7 @@ renderObject object =
         trans =
             if vx < 0 then
                 ""
+
             else
                 let
                     ( left, _, right, _ ) =

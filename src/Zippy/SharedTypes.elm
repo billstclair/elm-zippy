@@ -10,33 +10,32 @@
 ----------------------------------------------------------------------
 
 
-module Zippy.SharedTypes
-    exposing
-        ( Direction(..)
-        , ImageChoice
-        , ImageUrl
-        , Msg(..)
-        , Object
-        , Rectangle
-        , Vector
-        , combineVectors
-        , distanceToRectangle
-        , isVectorInRectangle
-        , makeRectangle
-        , makeSize
-        , makeVector
-        , positionToVector
-        , rectangleCenter
-        , rectangleCoordinates
-        , rectangleFromVectors
-        , sizeToVector
-        , vectorCoordinates
-        , vectorDifference
-        , vectorDistance
-        , vectorSum
-        , zeroRectangle
-        , zeroVector
-        )
+module Zippy.SharedTypes exposing
+    ( Direction(..)
+    , ImageChoice
+    , ImageUrl
+    , Msg(..)
+    , Object
+    , Rectangle
+    , Vector
+    , combineVectors
+    , distanceToRectangle
+    , isVectorInRectangle
+    , makeRectangle
+    , makeSize
+    , makeVector
+    , positionToVector
+    , rectangleCenter
+    , rectangleCoordinates
+    , rectangleFromVectors
+    , sizeToVector
+    , vectorCoordinates
+    , vectorDifference
+    , vectorDistance
+    , vectorSum
+    , zeroRectangle
+    , zeroVector
+    )
 
 import Mouse exposing (Position)
 import Time exposing (Time)

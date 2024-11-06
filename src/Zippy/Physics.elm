@@ -104,12 +104,16 @@ objectCollisionDirection o1 o2 =
         if horImpinges then
             if vertImpinge <= horImpinge then
                 Just Vertical
+
             else
                 Just Horizontal
+
         else
             Just Vertical
+
     else if horImpinges then
         Just Horizontal
+
     else
         Nothing
 
@@ -133,16 +137,20 @@ adjustForCollision o1 o2 =
                         if o1.sticky then
                             if o2.sticky then
                                 ( v1, v2 )
+
                             else
                                 ( v1, -v2 )
+
                         else if o2.sticky then
                             ( -v1, v2 )
+
                         else
                             elasticCollision o1.mass v1 o2.mass v2
 
                 ( ( vxf1, vxf2 ), ( vyf1, vyf2 ) ) =
                     if dir == Horizontal then
                         ( doCollision vx1 vx2, ( vy1, vy2 ) )
+
                     else
                         ( ( vx1, vx2 ), doCollision vy1 vy2 )
             in
