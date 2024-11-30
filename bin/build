@@ -2,6 +2,4 @@
 
 # Compile the application into site/zippy.html
 
-bin/build
-cd site
-rsyncit
+elm make src/Zippy.elm --output site/index.html
