@@ -17,6 +17,7 @@ module Zippy.SharedTypes exposing
     , Msg(..)
     , Object
     , Rectangle
+    , Size
     , Vector
     , combineVectors
     , distanceToRectangle
@@ -39,7 +40,12 @@ module Zippy.SharedTypes exposing
 
 import Mouse exposing (Position)
 import Time exposing (Time)
-import Window exposing (Size)
+
+
+type alias Size =
+    { width : Float
+    , height : Float
+    }
 
 
 type Msg

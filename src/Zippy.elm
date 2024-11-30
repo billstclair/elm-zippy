@@ -13,6 +13,10 @@
 module Zippy exposing (..)
 
 import AnimationFrame
+import Browser exposing (Document, UrlRequest(..))
+import Browser.Dom as Dom exposing (Viewport)
+import Browser.Events as Events
+import Browser.Navigation as Navigation exposing (Key)
 import Debug exposing (log)
 import Dialog
 import Html
@@ -65,7 +69,6 @@ import Mouse exposing (Position)
 import Random exposing (Seed)
 import Task
 import Time exposing (Time)
-import Window exposing (Size)
 import Zippy.Physics exposing (adjustForCollision)
 import Zippy.Render exposing (renderList, renderObject)
 import Zippy.SharedTypes
@@ -75,6 +78,7 @@ import Zippy.SharedTypes
         , Msg(..)
         , Object
         , Rectangle
+        , Size
         , Vector
         , distanceToRectangle
         , isVectorInRectangle
@@ -1074,19 +1078,38 @@ refreshPeriod =
     20 * Time.millisecond
 
 
+keyDecoder : Bool -> Decoder Msg
+keyDecoder keyDown =
+    JD.field "key" JD.string
+        |> JD.map (GlobalMsg << OnKeyPress keyDown)
+
+
+mouseDecoder : Decoder Msg
+mouseDecoder =
+    JD.field "screenX" JD.int
+        |> JD.andThen
+            (\screenX ->
+                JD.field "screenY" JD.int
+                    |> JD.andThen
+                        (\screenY ->
+                            JD.succeed (GlobalMsg <| OnMouseClick ( screenX, screenY ))
+                        )
+            )
+
+
 {-| Need to integrate
 <http://package.elm-lang.org/packages/knledg/touch-events/latest>
 -}
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Window.resizes Resize
+        [ Events.onResize (\w h -> Resize { width = w, height = h })
         , if model.running then
-            AnimationFrame.times (\_ -> Update)
+            Events.onAnimationFrame (\_ -> Update)
 
           else
             Sub.none
-        , Mouse.downs MouseDown
+        , Events.onMouseDown MouseDown
         , Mouse.ups MouseUp
         , if model.grabbedIndex >= 0 then
             Mouse.moves MouseMove
