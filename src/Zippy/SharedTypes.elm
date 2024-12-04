@@ -38,8 +38,13 @@ module Zippy.SharedTypes exposing
     , zeroVector
     )
 
-import Mouse exposing (Position)
 import Time exposing (Time)
+
+
+type alias Position =
+    { x : Int
+    , y : Int
+    }
 
 
 type alias Size =

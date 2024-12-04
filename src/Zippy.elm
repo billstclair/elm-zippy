@@ -12,7 +12,6 @@
 
 module Zippy exposing (..)
 
-import AnimationFrame
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Dom as Dom exposing (Viewport)
 import Browser.Events as Events
@@ -63,9 +62,7 @@ import Html.Attributes
         , width
         )
 import Html.Events exposing (onClick, onInput)
-import Keyboard exposing (KeyCode)
 import List.Extra as LE
-import Mouse exposing (Position)
 import Random exposing (Seed)
 import Task
 import Time exposing (Time)
@@ -1084,8 +1081,8 @@ keyDecoder keyDown =
         |> JD.map (GlobalMsg << OnKeyPress keyDown)
 
 
-mouseDecoder : Decoder Msg
-mouseDecoder =
+mouseDecoder : (Position -> Msg) -> Decoder Msg
+mouseDecoder position =
     JD.field "screenX" JD.int
         |> JD.andThen
             (\screenX ->
@@ -1109,10 +1106,10 @@ subscriptions model =
 
           else
             Sub.none
-        , Events.onMouseDown MouseDown
-        , Mouse.ups MouseUp
+        , Events.onMouseDown (mouseDecoder MouseDown)
+        , Events.onMouseUp (mouseDecoder MouseUp)
         , if model.grabbedIndex >= 0 then
-            Mouse.moves MouseMove
+            Events.onMouseMove (mouseDecoder MouseMove)
 
           else
             Sub.none
