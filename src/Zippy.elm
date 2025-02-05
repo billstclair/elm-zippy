@@ -88,6 +88,7 @@ import Zippy.SharedTypes
         , positionToVector
         , rectangleCenter
         , rectangleFromVectors
+        , scaleRectangle
         , sizeToVector
         , vectorDifference
         , vectorSum
@@ -115,6 +116,7 @@ type alias Model =
     , seed : Seed
     , choices : List ImageChoice
     , objects : List Object
+    , scale : Float
     , showDialog : Bool
     , didShow : Bool
     , running : Bool
@@ -289,14 +291,14 @@ randomVector mins maxs seed =
     ( makeVector x y, seed3 )
 
 
-randomPosition : Size -> Seed -> ( Vector, Seed )
-randomPosition size seed =
+randomPosition : Float -> Size -> Seed -> ( Vector, Seed )
+randomPosition scale size seed =
     let
         maxx =
-            size.width - objectSize.x
+            size.width - scale * objectSize.x
 
         maxy =
-            size.height - objectSize.y
+            size.height - scale * objectSize.y
     in
     randomVector zeroVector (makeVector maxx maxy) seed
 
@@ -368,8 +370,8 @@ randomImage seed choices =
     ( chooseImage x choices, seed2 )
 
 
-randomObject : Size -> Seed -> List ImageChoice -> ( Object, Seed )
-randomObject size seed choices =
+randomObject : Float -> Size -> Seed -> List ImageChoice -> ( Object, Seed )
+randomObject scale size seed choices =
     let
         ( im, seed2 ) =
             randomImage seed choices
@@ -383,13 +385,14 @@ randomObject size seed choices =
                     ( Just i, m )
 
         ( pos, seed3 ) =
-            randomPosition size seed2
+            randomPosition scale size seed2
 
         ( vel, seed4 ) =
             randomVelocity seed3
 
         rect =
             defaultObject.rect
+                |> scaleRectangle scale
 
         object =
             { defaultObject
@@ -411,7 +414,7 @@ addRandomObject : List ImageChoice -> Model -> Model
 addRandomObject choices model =
     let
         ( object, seed ) =
-            randomObject model.windowSize model.seed choices
+            randomObject model.scale model.windowSize model.seed choices
 
         ( ob, mdl ) =
             setObjectIndex object model
@@ -452,6 +455,7 @@ initialModel =
     , seed = Random.initialSeed 0
     , choices = [ zippyChoice ]
     , objects = []
+    , scale = 1.0
     , showDialog = False
     , didShow = False
     , running = True
@@ -469,16 +473,76 @@ init _ =
     )
 
 
+objectsPerDimension : Float
+objectsPerDimension =
+    5
+
+
+computeScale : Size -> Float
+computeScale { width, height } =
+    let
+        scaleDimension dim size =
+            dim / objectsPerDimension / size
+
+        scalex =
+            scaleDimension width objectSize.x
+
+        scaley =
+            scaleDimension height objectSize.y
+    in
+    min 1 (min scalex scaley)
+
+
+rescaleObject : Float -> Object -> Object
+rescaleObject scale object =
+    let
+        pos =
+            object.rect.pos
+
+        rect =
+            defaultObject.rect
+                |> scaleRectangle scale
+    in
+    { object | rect = { rect | pos = pos } }
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InitialSize { viewport } ->
-            ( { model | windowSize = makeSize viewport.width viewport.height }
+            let
+                windowSize =
+                    Debug.log "Initialize, windowSize" <|
+                        makeSize viewport.width viewport.height
+
+                scale =
+                    Debug.log "  computeScale" <|
+                        computeScale windowSize
+            in
+            ( { model
+                | windowSize = windowSize
+                , scale = scale
+              }
             , Task.perform Initialize Time.now
             )
 
         Resize size ->
-            ( { model | windowSize = size }
+            let
+                newScale =
+                    computeScale size
+
+                newObjects =
+                    if newScale == model.scale then
+                        model.objects
+
+                    else
+                        List.map (rescaleObject newScale) model.objects
+            in
+            ( { model
+                | windowSize = size
+                , scale = newScale
+                , objects = newObjects
+              }
             , Cmd.none
             )
 
@@ -488,7 +552,8 @@ update msg model =
                     Random.initialSeed (Time.posixToMillis posix)
 
                 mdl =
-                    makeInitialObjects { model | seed = seed }
+                    makeInitialObjects
+                        { model | seed = seed }
             in
             ( mdl
             , Cmd.none

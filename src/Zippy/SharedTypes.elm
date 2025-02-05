@@ -30,6 +30,7 @@ module Zippy.SharedTypes exposing
     , rectangleCenter
     , rectangleCoordinates
     , rectangleFromVectors
+    , scaleRectangle
     , sizeToVector
     , vectorCoordinates
     , vectorDifference
@@ -187,6 +188,20 @@ rectangleFromVectors pos size =
 zeroRectangle : Rectangle
 zeroRectangle =
     rectangleFromVectors zeroVector zeroVector
+
+
+scaleRectangle : Float -> Rectangle -> Rectangle
+scaleRectangle scale rect =
+    let
+        size =
+            rect.size
+
+        newSize =
+            { x = scale * size.x
+            , y = scale * size.y
+            }
+    in
+    { rect | size = newSize }
 
 
 rectangleCenter : Rectangle -> Vector
