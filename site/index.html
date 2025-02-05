@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Zippy</title>
+    <meta name='wot-verification' content='5cb29ec02479d36e6dbc'/> 
+    <meta property="og:locale" content="en_US"/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:title" content="Zippy"/>
+    <meta property="og:description" content="Zippy animates images of Zippy the Pinhead, Mr. Natural, and Milo bouncing around the screen."
+    <meta property="og:url" content="https://GibGoyGames.com/zippy/"/>
+    <meta property="og:site_name" content="Zippy"/>
+    <meta property="og:image" content="https://GibGoyGames.com/zippy/images/zippy-348x435.jpg"/>
+    <meta property="og:image:width" content="348"/>
+    <meta property="og:image:height" content="435"/>
+    <link href='/images/icon-180.png' rel='apple-touch-icon' sizes='180x180'>
+    <link rel="manifest" href="manifest.webmanifest">
+    <script type='text/javascript' src='worker.js'></script>
+    <script type='text/javascript' src='elm.js'></script>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  </head>
+  <body style='margin: auto;'>
+    <noscript>
+      <h2 style='text-align: center;'>Zippy</h2>
+      <p style='color: red; text-align: center;'>
+        <b>Zippy requires JavaScript to function. Without JavaScript,
+          this page is all you will ever see.</b>
+      </p>
+      <p style='text-align: center;'>
+        <img src='images/icon-512.png' width='512' height='512' alt='Zippy'/>
+      </p>
+      <p style='text-align: center;'>
+        <a href='https://github.com/billstclair/elm-zippy'>GitHub</a>
+      </p>
+    </noscript>
+    <div id='elm-node'></div>
+      <script type='text/javascript'>
+        var app = Elm.Zippy.init({
+            node: document.getElementById("elm-node")
+        });
+      </script>
+  </body>
+</html>
