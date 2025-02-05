@@ -62,6 +62,7 @@ import Html.Attributes
         , width
         )
 import Html.Events exposing (onClick, onInput)
+import Html.Lazy as Lazy
 import Json.Decode as JD exposing (Decoder)
 import List.Extra as LE
 import Random exposing (Seed)
@@ -416,7 +417,7 @@ addRandomObject choices model =
             setObjectIndex object model
     in
     { mdl
-        | objects = List.append mdl.objects [ log "object" ob ]
+        | objects = ob :: mdl.objects
         , seed = seed
     }
 
@@ -1076,7 +1077,7 @@ view model =
                     else
                         "Click Me!"
                 ]
-        , renderList model.objects model.windowSize
+        , Lazy.lazy2 renderList model.objects model.windowSize
         ]
 
 
