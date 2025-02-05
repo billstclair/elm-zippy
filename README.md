@@ -18,8 +18,7 @@ To convert the elm code to `site/elm.js`:
     
 Then refresh the browser pointing at Elm reactor (command-shift-R on my Mac).
 
-To update the live web site (assuming `site/.sshdir` points to it and
-you have my `rsyncit` script [https://github.com/billstclair/wws-scripts](installed)):
+To update the live web site (assuming `site/.sshdir` points to it and you have my `rsyncit` script [https://github.com/billstclair/wws-scripts](installed)):
 
     cd .../elm-zippy
     bin/update-site
