@@ -16,6 +16,7 @@ module Zippy.SharedTypes exposing
     , ImageUrl
     , Msg(..)
     , Object
+    , Position
     , Rectangle
     , Size
     , Vector
@@ -38,7 +39,8 @@ module Zippy.SharedTypes exposing
     , zeroVector
     )
 
-import Time exposing (Time)
+import Browser.Dom as Dom exposing (Viewport)
+import Time exposing (Posix)
 
 
 type alias Position =
@@ -54,9 +56,9 @@ type alias Size =
 
 
 type Msg
-    = InitialSize Size
+    = InitialSize Viewport
     | Resize Size
-    | Initialize Time
+    | Initialize Posix
     | Update
     | ShowDialog Bool
     | Run Bool
@@ -101,7 +103,7 @@ vectorCoordinates vector =
 
 sizeToVector : Size -> Vector
 sizeToVector size =
-    makeVector (toFloat size.width) (toFloat size.height)
+    makeVector size.width size.height
 
 
 positionToVector : Position -> Vector
@@ -144,7 +146,7 @@ type alias Rectangle =
 
 {-| Result is (left, top, right bottom)
 -}
-rectangleCoordinates : Rectangle -> ( Float, Float, Float, Float )
+rectangleCoordinates : Rectangle -> ( ( Float, Float ), ( Float, Float ) )
 rectangleCoordinates rect =
     let
         pos =
@@ -165,7 +167,7 @@ rectangleCoordinates rect =
         bottom =
             top + size.y
     in
-    ( left, top, right, bottom )
+    ( ( left, top ), ( right, bottom ) )
 
 
 makeRectangle : Float -> Float -> Float -> Float -> Rectangle
@@ -190,7 +192,7 @@ zeroRectangle =
 rectangleCenter : Rectangle -> Vector
 rectangleCenter rect =
     let
-        ( left, top, right, bottom ) =
+        ( ( left, top ), ( right, bottom ) ) =
             rectangleCoordinates rect
     in
     makeVector ((left + right) / 2) ((top + bottom) / 2)
@@ -208,7 +210,7 @@ distanceToRectangle vect rect =
 isVectorInRectangle : Vector -> Rectangle -> Bool
 isVectorInRectangle vect rect =
     let
-        ( left, top, right, bottom ) =
+        ( ( left, top ), ( right, bottom ) ) =
             rectangleCoordinates rect
 
         ( x, y ) =
@@ -217,7 +219,7 @@ isVectorInRectangle vect rect =
     x >= left && x <= right && y >= top && y <= bottom
 
 
-makeSize : Int -> Int -> Size
+makeSize : Float -> Float -> Size
 makeSize w h =
     { width = w, height = h }
 

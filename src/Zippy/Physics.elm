@@ -45,10 +45,10 @@ elasticCollision m1 v1 m2 v2 =
 objectCollisionDirection : Object -> Object -> Maybe Direction
 objectCollisionDirection o1 o2 =
     let
-        ( l1, t1, r1, b1 ) =
+        ( ( l1, t1 ), ( r1, b1 ) ) =
             rectangleCoordinates o1.rect
 
-        ( l2, t2, r2, b2 ) =
+        ( ( l2, t2 ), ( r2, b2 ) ) =
             rectangleCoordinates o2.rect
 
         ( vx1, vy1 ) =

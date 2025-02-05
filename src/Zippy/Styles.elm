@@ -13,6 +13,7 @@
 module Zippy.Styles exposing (SClass(..), class, classes, style)
 
 import Css exposing (Sel(..))
+import Html exposing (Attribute)
 import Html.Attributes
 
 
@@ -93,8 +94,18 @@ stylesheet =
 -- This is for inclusion at the beginning of the Board div
 
 
+scoped : Bool -> Attribute msg
+scoped isTrue =
+    Html.Attributes.style "scoped" <|
+        if isTrue then
+            "t"
+
+        else
+            "null"
+
+
 style =
-    Css.style [ Html.Attributes.scoped True ] stylesheet
+    Css.style [ scoped True ] stylesheet
 
 
 

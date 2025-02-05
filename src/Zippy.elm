@@ -62,10 +62,11 @@ import Html.Attributes
         , width
         )
 import Html.Events exposing (onClick, onInput)
+import Json.Decode as JD exposing (Decoder)
 import List.Extra as LE
 import Random exposing (Seed)
 import Task
-import Time exposing (Time)
+import Time exposing (Posix)
 import Zippy.Physics exposing (adjustForCollision)
 import Zippy.Render exposing (renderList, renderObject)
 import Zippy.SharedTypes
@@ -74,6 +75,7 @@ import Zippy.SharedTypes
         , ImageUrl
         , Msg(..)
         , Object
+        , Position
         , Rectangle
         , Size
         , Vector
@@ -95,11 +97,11 @@ import Zippy.SharedTypes
 
 initialSizeCmd : Cmd Msg
 initialSizeCmd =
-    Task.perform (\x -> InitialSize x) Window.size
+    Task.perform (\x -> InitialSize x) Dom.getViewport
 
 
 main =
-    Html.program
+    Browser.element
         { init = init
         , view = view
         , update = update
@@ -223,23 +225,22 @@ allChoices =
 chooseImage : Float -> List ImageChoice -> Maybe ( ImageUrl, Float )
 chooseImage x choices =
     let
-        loop =
-            \x chs ->
-                case chs of
-                    [] ->
-                        case choices of
-                            [] ->
-                                Nothing
+        loop xx chs =
+            case chs of
+                [] ->
+                    case choices of
+                        [] ->
+                            Nothing
 
-                            ch :: _ ->
-                                Just ( ch.image, ch.mass )
+                        ch :: _ ->
+                            Just ( ch.image, ch.mass )
 
-                    head :: tail ->
-                        if x <= head.probability then
-                            Just ( head.image, head.mass )
+                head :: tail ->
+                    if xx <= head.probability then
+                        Just ( head.image, head.mass )
 
-                        else
-                            loop (x - head.probability) tail
+                    else
+                        loop (xx - head.probability) tail
     in
     loop x choices
 
@@ -291,17 +292,28 @@ randomPosition : Size -> Seed -> ( Vector, Seed )
 randomPosition size seed =
     let
         maxx =
-            toFloat size.width - objectSize.x
+            size.width - objectSize.x
 
         maxy =
-            toFloat size.height - objectSize.y
+            size.height - objectSize.y
     in
     randomVector zeroVector (makeVector maxx maxy) seed
 
 
 randomBool : Seed -> ( Bool, Seed )
 randomBool seed =
-    Random.step Random.bool seed
+    let
+        ( int, newSeed ) =
+            Random.step (Random.int 0 1) seed
+
+        bool =
+            if int == 0 then
+                False
+
+            else
+                True
+    in
+    ( bool, newSeed )
 
 
 minVelocity : Vector
@@ -366,8 +378,8 @@ randomObject size seed choices =
                 Nothing ->
                     ( Nothing, defaultMass )
 
-                Just ( im, m ) ->
-                    ( Just im, m )
+                Just ( i, m ) ->
+                    ( Just i, m )
 
         ( pos, seed3 ) =
             randomPosition size seed2
@@ -422,8 +434,8 @@ makeInitialObjects model =
             [ zippyChoice, mrNaturalChoice, miloChoice, zippyChoice ]
 
         loop : List ImageChoice -> Model -> Model
-        loop choices mdl =
-            case choices of
+        loop ch mdl =
+            case ch of
                 [] ->
                     mdl
 
@@ -449,8 +461,8 @@ initialModel =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+init : () -> ( Model, Cmd Msg )
+init _ =
     ( initialModel
     , initialSizeCmd
     )
@@ -459,8 +471,8 @@ init =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        InitialSize size ->
-            ( { model | windowSize = size }
+        InitialSize { viewport } ->
+            ( { model | windowSize = makeSize viewport.width viewport.height }
             , Task.perform Initialize Time.now
             )
 
@@ -469,10 +481,10 @@ update msg model =
             , Cmd.none
             )
 
-        Initialize time ->
+        Initialize posix ->
             let
                 seed =
-                    Random.initialSeed (truncate time)
+                    Random.initialSeed (Time.posixToMillis posix)
 
                 mdl =
                     makeInitialObjects { model | seed = seed }
@@ -534,7 +546,7 @@ update msg model =
 
                                     ( _, mdl3 ) =
                                         updateObjectAtIndex
-                                            (\ob -> { ob | velocity = vel })
+                                            (\obj -> { obj | velocity = vel })
                                             ob.index
                                             mdl2
                                 in
@@ -713,28 +725,27 @@ updateObjectAtIndex : (Object -> Object) -> Int -> Model -> ( Maybe Object, Mode
 updateObjectAtIndex f index model =
     let
         loop : List Object -> List Object -> ( Maybe Object, Model )
-        loop =
-            \objects res ->
-                case objects of
-                    [] ->
-                        ( Nothing, model )
+        loop objects res =
+            case objects of
+                [] ->
+                    ( Nothing, model )
 
-                    ob :: tail ->
-                        if index /= ob.index then
-                            loop tail (ob :: res)
+                ob :: tail ->
+                    if index /= ob.index then
+                        loop tail (ob :: res)
 
-                        else
-                            let
-                                ob2 =
-                                    f ob
-                            in
-                            ( Just ob2
-                            , { model
-                                | objects =
-                                    List.concat
-                                        [ List.reverse res, ob2 :: tail ]
-                              }
-                            )
+                    else
+                        let
+                            ob2 =
+                                f ob
+                        in
+                        ( Just ob2
+                        , { model
+                            | objects =
+                                List.concat
+                                    [ List.reverse res, ob2 :: tail ]
+                          }
+                        )
     in
     loop model.objects []
 
@@ -838,24 +849,23 @@ processCollisions : List Object -> List Object
 processCollisions objects =
     let
         loop : List Object -> List ( Object, Object ) -> List Object -> List Object
-        loop =
-            \obs done res ->
-                case obs of
-                    [] ->
-                        List.reverse res
+        loop obs done res =
+            case obs of
+                [] ->
+                    List.reverse res
 
-                    ob :: tail ->
-                        case LE.find (\( o, _ ) -> ob == o) done of
-                            Just ( _, oo ) ->
-                                loop tail done (oo :: res)
+                ob :: tail ->
+                    case LE.find (\( o, _ ) -> ob == o) done of
+                        Just ( _, oo ) ->
+                            loop tail done (oo :: res)
 
-                            Nothing ->
-                                case innerLoop ob tail done of
-                                    Nothing ->
-                                        loop tail done (ob :: res)
+                        Nothing ->
+                            case innerLoop ob tail done of
+                                Nothing ->
+                                    loop tail done (ob :: res)
 
-                                    Just ( o, pair ) ->
-                                        loop tail (pair :: done) (o :: res)
+                                Just ( o, pair ) ->
+                                    loop tail (pair :: done) (o :: res)
 
         innerLoop : Object -> List Object -> List ( Object, Object ) -> Maybe ( Object, ( Object, Object ) )
         innerLoop object obs done =
@@ -1070,17 +1080,6 @@ view model =
         ]
 
 
-refreshPeriod : Time
-refreshPeriod =
-    20 * Time.millisecond
-
-
-keyDecoder : Bool -> Decoder Msg
-keyDecoder keyDown =
-    JD.field "key" JD.string
-        |> JD.map (GlobalMsg << OnKeyPress keyDown)
-
-
 mouseDecoder : (Position -> Msg) -> Decoder Msg
 mouseDecoder position =
     JD.field "screenX" JD.int
@@ -1089,7 +1088,7 @@ mouseDecoder position =
                 JD.field "screenY" JD.int
                     |> JD.andThen
                         (\screenY ->
-                            JD.succeed (GlobalMsg <| OnMouseClick ( screenX, screenY ))
+                            JD.succeed (position { x = screenX, y = screenY })
                         )
             )
 
@@ -1100,7 +1099,8 @@ mouseDecoder position =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Events.onResize (\w h -> Resize { width = w, height = h })
+        [ Events.onResize
+            (\w h -> Resize { width = toFloat w, height = toFloat h })
         , if model.running then
             Events.onAnimationFrame (\_ -> Update)
 

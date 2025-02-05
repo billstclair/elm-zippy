@@ -31,16 +31,12 @@ import Svg.Attributes
         , y1
         , y2
         )
-import Window exposing (Size)
 import Zippy.SharedTypes
     exposing
         ( Msg(..)
         , Object
-        , Vector
-        , makeSize
-        , makeVector
+        , Size
         , rectangleCoordinates
-        , zeroVector
         )
 import Zippy.Styles as Styles exposing (SClass(..), classes)
 
@@ -57,10 +53,10 @@ renderObject object =
         box =
             rect
                 [ class "SvgCell SvgObjectColor"
-                , x <| toString pos.x
-                , y <| toString pos.y
-                , width <| toString size.x
-                , height <| toString size.y
+                , x <| String.fromFloat pos.x
+                , y <| String.fromFloat pos.y
+                , width <| String.fromFloat size.x
+                , height <| String.fromFloat size.y
                 ]
                 []
 
@@ -73,11 +69,11 @@ renderObject object =
 
             else
                 let
-                    ( left, _, right, _ ) =
+                    ( ( left, _ ), ( right, _ ) ) =
                         rectangleCoordinates object.rect
 
                     tr =
-                        toString (left + right)
+                        String.fromFloat (left + right)
                 in
                 "translate(" ++ tr ++ ",0) scale(-1, 1)"
 
@@ -89,10 +85,10 @@ renderObject object =
                 Just href ->
                     [ image
                         [ xlinkHref href
-                        , x <| toString (pos.x + 1)
-                        , y <| toString (pos.y + 1)
-                        , width <| toString (size.x - 2)
-                        , height <| toString (size.y - 2)
+                        , x <| String.fromFloat (pos.x + 1)
+                        , y <| String.fromFloat (pos.y + 1)
+                        , width <| String.fromFloat (size.x - 2)
+                        , height <| String.fromFloat (size.y - 2)
                         , transform trans
                         ]
                         []
@@ -105,10 +101,10 @@ renderList : List Object -> Size -> Html Msg
 renderList objects size =
     let
         sw =
-            toString size.width
+            String.fromFloat size.width
 
         sh =
-            toString size.height
+            String.fromFloat size.height
     in
     div []
         [ Styles.style
@@ -117,8 +113,8 @@ renderList objects size =
                 [ class "SvgCell SvgCellColor"
                 , x "1"
                 , y "1"
-                , width <| toString (size.width - 2)
-                , height <| toString (size.height - 2)
+                , width <| String.fromFloat (size.width - 2)
+                , height <| String.fromFloat (size.height - 2)
                 ]
                 []
                 :: List.concatMap renderObject objects
