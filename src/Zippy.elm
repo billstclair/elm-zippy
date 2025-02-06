@@ -644,14 +644,14 @@ update msg model =
             )
 
         RemoveObject ->
-            case List.reverse model.objects of
+            case model.objects of
                 [] ->
                     ( model
                     , Cmd.none
                     )
 
                 _ :: tail ->
-                    ( { model | objects = List.reverse tail }
+                    ( { model | objects = tail }
                     , Cmd.none
                     )
 
