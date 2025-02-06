@@ -31,6 +31,7 @@ module Zippy.SharedTypes exposing
     , rectangleCoordinates
     , rectangleFromVectors
     , scaleRectangle
+    , scaleVector
     , sizeToVector
     , vectorCoordinates
     , vectorDifference
@@ -139,6 +140,13 @@ vectorDistance v1 v2 =
     sqrt (diff.x ^ 2 + diff.y ^ 2)
 
 
+scaleVector : Float -> Vector -> Vector
+scaleVector scale vector =
+    { x = scale * vector.x
+    , y = scale * vector.y
+    }
+
+
 type alias Rectangle =
     { pos : Vector --top-left corner
     , size : Vector
@@ -192,16 +200,7 @@ zeroRectangle =
 
 scaleRectangle : Float -> Rectangle -> Rectangle
 scaleRectangle scale rect =
-    let
-        size =
-            rect.size
-
-        newSize =
-            { x = scale * size.x
-            , y = scale * size.y
-            }
-    in
-    { rect | size = newSize }
+    { rect | size = scaleVector scale rect.size }
 
 
 rectangleCenter : Rectangle -> Vector

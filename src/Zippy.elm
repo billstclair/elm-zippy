@@ -89,6 +89,7 @@ import Zippy.SharedTypes
         , rectangleCenter
         , rectangleFromVectors
         , scaleRectangle
+        , scaleVector
         , sizeToVector
         , vectorDifference
         , vectorSum
@@ -329,11 +330,14 @@ maxVelocity =
     makeVector 12 12
 
 
-randomVelocity : Seed -> ( Vector, Seed )
-randomVelocity seed =
+randomVelocity : Float -> Seed -> ( Vector, Seed )
+randomVelocity scale seed =
     let
         ( { x, y }, seed2 ) =
-            randomVector minVelocity maxVelocity seed
+            randomVector
+                (scaleVector scale minVelocity)
+                (scaleVector scale maxVelocity)
+                seed
 
         ( negx, seed3 ) =
             randomBool seed2
@@ -388,7 +392,7 @@ randomObject scale size seed choices =
             randomPosition scale size seed2
 
         ( vel, seed4 ) =
-            randomVelocity seed3
+            randomVelocity scale seed3
 
         rect =
             defaultObject.rect
@@ -420,7 +424,7 @@ addRandomObject choices model =
             setObjectIndex object model
     in
     { mdl
-        | objects = ob :: mdl.objects
+        | objects = mdl.objects ++ [ ob ]
         , seed = seed
     }
 
@@ -493,17 +497,20 @@ computeScale { width, height } =
     min 1 (min scalex scaley)
 
 
-rescaleObject : Float -> Object -> Object
-rescaleObject scale object =
+rescaleObject : Float -> Float -> Object -> Object
+rescaleObject oldScale newScale object =
     let
         pos =
             object.rect.pos
 
         rect =
             defaultObject.rect
-                |> scaleRectangle scale
+                |> scaleRectangle newScale
     in
-    { object | rect = { rect | pos = pos } }
+    { object
+        | rect = { rect | pos = pos }
+        , velocity = scaleVector (newScale / oldScale) object.velocity
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -512,12 +519,10 @@ update msg model =
         InitialSize { viewport } ->
             let
                 windowSize =
-                    Debug.log "Initialize, windowSize" <|
-                        makeSize viewport.width viewport.height
+                    makeSize viewport.width viewport.height
 
                 scale =
-                    Debug.log "  computeScale" <|
-                        computeScale windowSize
+                    computeScale windowSize
             in
             ( { model
                 | windowSize = windowSize
@@ -536,7 +541,7 @@ update msg model =
                         model.objects
 
                     else
-                        List.map (rescaleObject newScale) model.objects
+                        List.map (rescaleObject model.scale newScale) model.objects
             in
             ( { model
                 | windowSize = size
@@ -644,14 +649,14 @@ update msg model =
             )
 
         RemoveObject ->
-            case model.objects of
+            case List.reverse model.objects of
                 [] ->
                     ( model
                     , Cmd.none
                     )
 
                 _ :: tail ->
-                    ( { model | objects = tail }
+                    ( { model | objects = List.reverse tail }
                     , Cmd.none
                     )
 
@@ -699,15 +704,16 @@ update msg model =
                                     , grabbedOffset =
                                         vectorDifference
                                             ob.rect.pos
-                                            (rectangleCenter ob.rect)
+                                        <|
+                                            positionToVector pos
                                 }
                         in
-                        update (MouseMove pos) mdl
+                        ( mdl, Cmd.none )
 
         MouseUp pos ->
             let
                 ( vel, seed ) =
-                    randomVelocity model.seed
+                    randomVelocity model.scale model.seed
 
                 mdl2 =
                     { model | seed = seed }
