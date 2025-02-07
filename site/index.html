@@ -14,6 +14,7 @@
     <meta property="og:image:height" content="435"/>
     <link href='/zippy/images/icon-180.png' rel='apple-touch-icon' sizes='180x180'>
     <link rel="manifest" href="manifest.webmanifest">
+    <script type='text/javascript' src='js/audio.js'></script>
     <script type='text/javascript' src='worker.js'></script>
     <script type='text/javascript' src='elm.js'></script>
     <meta name="mobile-web-app-capable" content="yes">
@@ -38,6 +39,7 @@
         var app = Elm.Zippy.init({
             node: document.getElementById("elm-node")
         });
+        startAudio(app);
       </script>
   </body>
 </html>

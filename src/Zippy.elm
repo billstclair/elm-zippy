@@ -10,14 +10,16 @@
 ----------------------------------------------------------------------
 
 
-module Zippy exposing (..)
+port module Zippy exposing (..)
 
+import Audio exposing (Audio, AudioCmd, AudioData)
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Dom as Dom exposing (Viewport)
 import Browser.Events as Events
 import Browser.Navigation as Navigation exposing (Key)
 import Debug exposing (log)
 import Dialog
+import Duration
 import Html
     exposing
         ( Attribute
@@ -64,7 +66,9 @@ import Html.Attributes
 import Html.Events exposing (onClick, onInput)
 import Html.Lazy as Lazy
 import Json.Decode as JD exposing (Decoder)
+import Json.Encode as JE exposing (Value)
 import List.Extra as LE
+import List.Nonempty exposing (Nonempty(..))
 import Random exposing (Seed)
 import Task
 import Time exposing (Posix)
@@ -103,12 +107,15 @@ initialSizeCmd =
     Task.perform (\x -> InitialSize x) Dom.getViewport
 
 
+main : Platform.Program () (Audio.Model Msg Model) (Audio.Msg Msg)
 main =
-    Browser.element
+    Audio.elementWithAudio
         { init = init
-        , view = view
         , update = update
+        , view = view
         , subscriptions = subscriptions
+        , audio = audio
+        , audioPort = { toJS = audioPortToJS, fromJS = audioPortFromJS }
         }
 
 
@@ -470,10 +477,11 @@ initialModel =
     }
 
 
-init : () -> ( Model, Cmd Msg )
+init : () -> ( Model, Cmd Msg, AudioCmd Msg )
 init _ =
     ( initialModel
     , initialSizeCmd
+    , Audio.cmdNone
     )
 
 
@@ -513,8 +521,17 @@ rescaleObject oldScale newScale object =
     }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : AudioData -> Msg -> Model -> ( Model, Cmd Msg, AudioCmd Msg )
+update audioData msg model =
+    let
+        ( mdl, cmd ) =
+            updateInternal msg model
+    in
+    ( mdl, cmd, Audio.cmdNone )
+
+
+updateInternal : Msg -> Model -> ( Model, Cmd Msg )
+updateInternal msg model =
     case msg of
         InitialSize { viewport } ->
             let
@@ -767,6 +784,9 @@ update msg model =
                 ( mdl
                 , Cmd.none
                 )
+
+        ReceiveAudio value ->
+            ( model, Cmd.none )
 
         Nop ->
             ( model
@@ -1128,8 +1148,8 @@ lines strings =
     p [] (List.concatMap (\s -> [ text s, br ]) strings)
 
 
-view : Model -> Html Msg
-view model =
+view : AudioData -> Model -> Html Msg
+view audioData model =
     div []
         [ if model.showDialog then
             dialog model
@@ -1168,8 +1188,8 @@ mouseDecoder position =
 {-| Need to integrate
 <http://package.elm-lang.org/packages/knledg/touch-events/latest>
 -}
-subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions : AudioData -> Model -> Sub Msg
+subscriptions audioData model =
     Sub.batch
         [ Events.onResize
             (\w h -> Resize { width = toFloat w, height = toFloat h })
@@ -1185,4 +1205,20 @@ subscriptions model =
 
           else
             Sub.none
+        , audioPortFromJS ReceiveAudio
         ]
+
+
+
+-- Audio
+
+
+audio : AudioData -> Model -> Audio
+audio audioData model =
+    Audio.silence
+
+
+port audioPortToJS : Value -> Cmd msg
+
+
+port audioPortFromJS : (Value -> msg) -> Sub msg
