@@ -22,6 +22,8 @@ type alias SoundCmd =
     }
 
 
+{-| These match the `.mp3` files in `site/sounds/`
+-}
 sounds : List String
 sounds =
     [ "milo-left"

@@ -16,6 +16,7 @@ module Zippy.SharedTypes exposing
     , ImageUrl
     , Msg(..)
     , Object
+    , ObjectSounds
     , Position
     , Rectangle
     , Size
@@ -26,6 +27,8 @@ module Zippy.SharedTypes exposing
     , makeRectangle
     , makeSize
     , makeVector
+    , objectSoundLeft
+    , objectSoundRight
     , positionToVector
     , rectangleCenter
     , rectangleCoordinates
@@ -68,6 +71,7 @@ type Msg
     | RemoveObject
     | AddObject
     | ToggleChoice ImageChoice
+    | ToggleMakeSounds
     | SelectObject Object
     | MouseDown Position
     | MouseUp Position
@@ -75,8 +79,23 @@ type Msg
     | Nop
 
 
+type alias ObjectSounds =
+    ( String, String )
+
+
+objectSoundLeft : ObjectSounds -> String
+objectSoundLeft sounds =
+    Tuple.first sounds
+
+
+objectSoundRight : ObjectSounds -> String
+objectSoundRight sounds =
+    Tuple.second sounds
+
+
 type alias ImageChoice =
     { image : ImageUrl
+    , sounds : ObjectSounds
     , mass : Float
     , probability : Float
     }
@@ -246,6 +265,7 @@ type alias ImageUrl =
 -}
 type alias Object =
     { index : Int
+    , sounds : ( String, String )
     , rect : Rectangle
     , velocity : Vector
     , mass : Float

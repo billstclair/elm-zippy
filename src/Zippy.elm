@@ -76,6 +76,7 @@ import Zippy.SharedTypes
         , ImageUrl
         , Msg(..)
         , Object
+        , ObjectSounds
         , Position
         , Rectangle
         , Size
@@ -85,6 +86,8 @@ import Zippy.SharedTypes
         , makeRectangle
         , makeSize
         , makeVector
+        , objectSoundLeft
+        , objectSoundRight
         , positionToVector
         , rectangleCenter
         , rectangleFromVectors
@@ -116,6 +119,7 @@ main =
 type alias Model =
     { windowSize : Size
     , seed : Seed
+    , makeSounds : Bool
     , choices : List ImageChoice
     , objects : List Object
     , scale : Float
@@ -196,6 +200,7 @@ mrNaturalMass =
 zippyChoice : ImageChoice
 zippyChoice =
     { image = zippy
+    , sounds = ( "zippy-left", "zippy-right" )
     , mass = zippyMass
     , probability = 0.75
     }
@@ -204,6 +209,7 @@ zippyChoice =
 miloChoice : ImageChoice
 miloChoice =
     { image = milo
+    , sounds = ( "milo-left", "milo-right" )
     , mass = miloMass
     , probability = 0.25
     }
@@ -212,6 +218,7 @@ miloChoice =
 mrNaturalChoice : ImageChoice
 mrNaturalChoice =
     { image = mrNatural
+    , sounds = ( "mr-natural-left", "mr-natural-right" )
     , mass = mrNaturalMass
     , probability = 0.25
     }
@@ -227,7 +234,7 @@ allChoices =
     ]
 
 
-chooseImage : Float -> List ImageChoice -> Maybe ( ImageUrl, Float )
+chooseImage : Float -> List ImageChoice -> Maybe ( ImageUrl, Float, ObjectSounds )
 chooseImage x choices =
     let
         loop xx chs =
@@ -238,11 +245,11 @@ chooseImage x choices =
                             Nothing
 
                         ch :: _ ->
-                            Just ( ch.image, ch.mass )
+                            Just ( ch.image, ch.mass, ch.sounds )
 
                 head :: tail ->
                     if xx <= head.probability then
-                        Just ( head.image, head.mass )
+                        Just ( head.image, head.mass, head.sounds )
 
                     else
                         loop (xx - head.probability) tail
@@ -268,6 +275,7 @@ defaultMass =
 defaultObject : Object
 defaultObject =
     { index = -1
+    , sounds = ( "", "" )
     , rect = defaultObjectRect
     , image = Nothing
     , velocity = makeVector 8 4
@@ -363,7 +371,7 @@ randomVelocity scale seed =
     ( makeVector xx yy, seed4 )
 
 
-randomImage : Seed -> List ImageChoice -> ( Maybe ( ImageUrl, Float ), Seed )
+randomImage : Seed -> List ImageChoice -> ( Maybe ( ImageUrl, Float, ObjectSounds ), Seed )
 randomImage seed choices =
     let
         sum =
@@ -381,13 +389,13 @@ randomObject scale size seed choices =
         ( im, seed2 ) =
             randomImage seed choices
 
-        ( img, mass ) =
+        ( img, mass, sounds ) =
             case im of
                 Nothing ->
-                    ( Nothing, defaultMass )
+                    ( Nothing, defaultMass, ( "", "" ) )
 
-                Just ( i, m ) ->
-                    ( Just i, m )
+                Just ( i, m, s ) ->
+                    ( Just i, m, s )
 
         ( pos, seed3 ) =
             randomPosition scale size seed2
@@ -402,6 +410,7 @@ randomObject scale size seed choices =
         object =
             { defaultObject
                 | image = img
+                , sounds = sounds
                 , rect = { rect | pos = pos }
                 , velocity = vel
                 , mass = mass
@@ -458,6 +467,7 @@ initialModel : Model
 initialModel =
     { windowSize = initialSize
     , seed = Random.initialSeed 0
+    , makeSounds = False
     , choices = [ zippyChoice ]
     , objects = []
     , scale = 1.0
@@ -566,7 +576,12 @@ update msg model =
             )
 
         Update ->
-            if model.running then
+            if not model.running then
+                ( model
+                , Cmd.none
+                )
+
+            else
                 let
                     index =
                         model.grabbedIndex
@@ -574,13 +589,13 @@ update msg model =
                     grabbed =
                         LE.find (\ob -> ob.index == index) model.objects
 
-                    mdl =
+                    ( mdl, cmd ) =
                         updateObjects model
                 in
                 case grabbed of
                     Nothing ->
                         ( mdl
-                        , Cmd.none
+                        , cmd
                         )
 
                     Just go ->
@@ -602,7 +617,7 @@ update msg model =
                         case mob of
                             Nothing ->
                                 ( mdl2
-                                , Cmd.none
+                                , cmd
                                 )
 
                             Just ob ->
@@ -623,13 +638,8 @@ update msg model =
                                             mdl2
                                 in
                                 ( { mdl3 | grabbedPos = newpos }
-                                , Cmd.none
+                                , cmd
                                 )
-
-            else
-                ( model
-                , Cmd.none
-                )
 
         ShowDialog show ->
             ( { model
@@ -667,6 +677,11 @@ update msg model =
                     [ choice ]
             in
             ( { model | choices = choices }
+            , Cmd.none
+            )
+
+        ToggleMakeSounds ->
+            ( { model | makeSounds = not model.makeSounds }
             , Cmd.none
             )
 
@@ -962,7 +977,7 @@ processCollisions objects =
     loop objects [] []
 
 
-updateObjects : Model -> Model
+updateObjects : Model -> ( Model, Cmd msg )
 updateObjects model =
     let
         ws =
@@ -972,8 +987,60 @@ updateObjects model =
             model.objects
                 |> processCollisions
                 |> List.map (updateObject ws model.objects)
+
+        soundCmds =
+            if model.makeSounds then
+                doSounds model.windowSize objects model.objects
+
+            else
+                []
     in
-    { model | objects = objects }
+    ( { model | objects = objects }, Cmd.batch soundCmds )
+
+
+doSounds : Size -> List Object -> List Object -> List (Cmd msg)
+doSounds windowSize updated original =
+    let
+        useHorizontal =
+            windowSize.width >= windowSize.height
+
+        folder : Object -> List (Cmd msg) -> List (Cmd msg)
+        folder up cmds =
+            case LE.find (\o -> up.index == o.index) original of
+                Nothing ->
+                    cmds
+
+                Just o ->
+                    if up.velocity == o.velocity then
+                        cmds
+
+                    else if
+                        (useHorizontal && up.velocity.x < o.velocity.x)
+                            || (not useHorizontal && up.velocity.y < o.velocity.y)
+                    then
+                        objectSound o 1 :: cmds
+
+                    else if
+                        (useHorizontal && up.velocity.x > o.velocity.x)
+                            || (not useHorizontal && up.velocity.y > o.velocity.y)
+                    then
+                        objectSound o -1 :: cmds
+
+                    else
+                        cmds
+    in
+    List.foldr folder [] updated
+
+
+objectSound : Object -> Int -> Cmd msg
+objectSound o d =
+    (if d < 0 then
+        objectSoundRight o.sounds
+
+     else
+        objectSoundLeft o.sounds
+    )
+        |> Sound.playSound
 
 
 btn : String -> Msg -> Html Msg
@@ -1032,16 +1099,29 @@ isChoice choice model =
     List.member choice model.choices
 
 
-choiceCheckbox : String -> ImageChoice -> Model -> Html Msg
-choiceCheckbox name choice model =
-    checkbox name (isChoice choice model) (ToggleChoice choice)
+choiceRadioButton : String -> ImageChoice -> Model -> Html Msg
+choiceRadioButton name choice model =
+    radioButton name (isChoice choice model) (ToggleChoice choice)
+
+
+radioButton : String -> Bool -> msg -> Html msg
+radioButton name isChecked msg =
+    label []
+        [ input
+            [ type_ "radio"
+            , onClick msg
+            , checked isChecked
+            ]
+            []
+        , text name
+        ]
 
 
 checkbox : String -> Bool -> msg -> Html msg
 checkbox name isChecked msg =
     label []
         [ input
-            [ type_ "radio"
+            [ type_ "checkbox"
             , onClick msg
             , checked isChecked
             ]
@@ -1078,18 +1158,23 @@ dialog model =
                         (Run run)
                     ]
                 , p []
-                    [ choiceCheckbox "Zippy" zippyChoice model
+                    [ choiceRadioButton "Zippy" zippyChoice model
                     , text " "
-                    , choiceCheckbox "Mr. Natural" mrNaturalChoice model
+                    , choiceRadioButton "Mr. Natural" mrNaturalChoice model
                     , text " "
-                    , choiceCheckbox "Milo" miloChoice model
+                    , choiceRadioButton "Milo" miloChoice model
                     ]
+                , p []
+                    [ checkbox "Make sounds" model.makeSounds ToggleMakeSounds ]
                 , div []
                     [ lines
                         [ "Choose a character and click 'Add' to add it."
                         , "Click 'Remove' to remove the least-recently added character."
                         , "Click 'Clear' to remove all characters."
                         , "Click 'Stop' to stop animation, and 'Run' to restart it."
+                        , ""
+                        , "Check 'Make Sounds' to make sounds. Annoying. Fun?"
+                        , ""
                         , "Click on the board to pick up the nearest character."
                         , "Move the mouse to drag it around."
                         , "If you let the mouse up while stationary, it will get a random velocity."
