@@ -38,6 +38,40 @@
         var app = Elm.Zippy.init({
             node: document.getElementById("elm-node")
         });
+
+        // audio port
+        // { cmd: "create", file: <string url> }
+        // { cmd: "play", file: <string url> }
+        // { cmd: "delete", file: <string url> }
+        var audio = new Map();
+        async function processAudio(cmd) {
+            var file = cmd.file;
+            if (typeof file == 'string' || file instanceof String) {
+                if (cmd.cmd == "create") {
+                    var sound = new Audio(file);
+                    audio.set(cmd.file, sound);
+                } else if (cmd.cmd == "play") {
+                    var sound = audio.get(file);
+                    if (!sound) {
+                        console.log("play, no sound:", file);
+                    } else {
+                        try {
+                            sound.load();
+                            await sound.play();
+                        } catch (e) {
+                            console.log("play error:", e);
+                        }
+                    }
+                } else if (cmd.cmd == "delete") {
+                    audio.delete(file);
+                } else {
+                    console.log("Unknown cmd:", cmd)
+                }
+            }
+        };
+        if (app.ports && app.ports.audio && app.ports.audio.subscribe) {
+            app.ports.audio.subscribe(processAudio);
+        }
       </script>
   </body>
 </html>
