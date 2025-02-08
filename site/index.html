@@ -49,6 +49,7 @@
             if (typeof file == 'string' || file instanceof String) {
                 if (cmd.cmd == "create") {
                     var sound = new Audio(file);
+                    sound.load();
                     audio.set(cmd.file, sound);
                 } else if (cmd.cmd == "play") {
                     var sound = audio.get(file);
