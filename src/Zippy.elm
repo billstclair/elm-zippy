@@ -1178,6 +1178,7 @@ dialog model =
                         , "Click on the board to pick up the nearest character."
                         , "Move the mouse to drag it around."
                         , "If you let the mouse up while stationary, it will get a random velocity."
+                        , ""
                         , "Click 'Close Dialog' below to get rid of this."
                         ]
                     ]
