@@ -44,9 +44,11 @@
         }
 
         // audio port
-        // { cmd: "create", file: <string url> }
-        // { cmd: "play", file: <string url> }
-        // { cmd: "delete", file: <string url> }
+        // { cmd: "create", file: <string url>, idx: <string> }
+        // { cmd: "play", file: <string url>, idx: <string> }
+        // { cmd: "delete", file: <string url>, idx: <string> }
+        // `idx` is optional, and defaults to `file`.
+        // `file` is not necessary for "play" and "delete", if `idx` is included.
         var audio = new Map();
         async function processAudio(cmd) {
             var file = cmd.file;

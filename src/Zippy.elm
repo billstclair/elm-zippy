@@ -96,6 +96,7 @@ import Zippy.SharedTypes
         , zeroRectangle
         , zeroVector
         )
+import Zippy.Sound as Sound
 
 
 initialSizeCmd : Cmd Msg
@@ -473,7 +474,7 @@ initialModel =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( initialModel
-    , initialSizeCmd
+    , Cmd.batch [ initialSizeCmd, Sound.registerSounds ]
     )
 
 
