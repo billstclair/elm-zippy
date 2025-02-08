@@ -42,7 +42,6 @@ module Zippy.SharedTypes exposing
     )
 
 import Browser.Dom as Dom exposing (Viewport)
-import Json.Encode exposing (Value)
 import Time exposing (Posix)
 
 
@@ -73,7 +72,6 @@ type Msg
     | MouseDown Position
     | MouseUp Position
     | MouseMove Position
-    | ReceiveAudio Value
     | Nop
 
 
