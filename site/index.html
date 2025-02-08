@@ -39,6 +39,10 @@
             node: document.getElementById("elm-node")
         });
 
+        function isString(s) {
+            return (typeof s == 'string' || s instanceof String);
+        }
+
         // audio port
         // { cmd: "create", file: <string url> }
         // { cmd: "play", file: <string url> }
@@ -46,15 +50,18 @@
         var audio = new Map();
         async function processAudio(cmd) {
             var file = cmd.file;
-            if (typeof file == 'string' || file instanceof String) {
+            var idx = cmd.idx || file
+            if (isString(idx)) {
                 if (cmd.cmd == "create") {
-                    var sound = new Audio(file);
-                    sound.load();
-                    audio.set(cmd.file, sound);
+                    if (isString(file)) {
+                        var sound = new Audio(file);
+                        sound.load();
+                        audio.set(idx, sound);
+                    }
                 } else if (cmd.cmd == "play") {
-                    var sound = audio.get(file);
+                    var sound = audio.get(idx);
                     if (!sound) {
-                        console.log("play, no sound:", file);
+                        console.log("play, no sound:", cmd);
                     } else {
                         try {
                             sound.load();
@@ -64,7 +71,7 @@
                         }
                     }
                 } else if (cmd.cmd == "delete") {
-                    audio.delete(file);
+                    audio.delete(idx);
                 } else {
                     console.log("Unknown cmd:", cmd)
                 }
