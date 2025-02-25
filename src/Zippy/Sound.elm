@@ -37,7 +37,7 @@ sounds =
 
 soundToUrl : String -> String
 soundToUrl sound =
-    "sounds/" ++ sound ++ ".mp3"
+    "sounds/" ++ sound ++ ".m4a"
 
 
 encodeSoundCmd : SoundCmd -> Value
