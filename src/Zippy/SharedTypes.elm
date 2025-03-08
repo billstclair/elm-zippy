@@ -20,6 +20,7 @@ module Zippy.SharedTypes exposing
     , Position
     , Rectangle
     , Size
+    , SoundType(..)
     , Vector
     , combineVectors
     , distanceToRectangle
@@ -71,12 +72,20 @@ type Msg
     | RemoveObject
     | AddObject
     | ToggleChoice ImageChoice
-    | ToggleMakeSounds
+    | SetSoundType SoundType
     | SelectObject Object
     | MouseDown Position
     | MouseUp Position
     | MouseMove Position
     | Nop
+
+
+{-| The type of sounds. Set by the chooser in the pop-up dialog.
+-}
+type SoundType
+    = NoSound
+    | SoundOn
+    | OneDimSound
 
 
 type alias ObjectSounds =

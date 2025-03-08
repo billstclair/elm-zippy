@@ -80,6 +80,7 @@ import Zippy.SharedTypes
         , Position
         , Rectangle
         , Size
+        , SoundType(..)
         , Vector
         , distanceToRectangle
         , isVectorInRectangle
@@ -119,7 +120,7 @@ main =
 type alias Model =
     { windowSize : Size
     , seed : Seed
-    , makeSounds : Bool
+    , soundType : SoundType
     , choices : List ImageChoice
     , objects : List Object
     , scale : Float
@@ -467,7 +468,7 @@ initialModel : Model
 initialModel =
     { windowSize = initialSize
     , seed = Random.initialSeed 0
-    , makeSounds = False
+    , soundType = NoSound
     , choices = [ zippyChoice ]
     , objects = []
     , scale = 1.0
@@ -680,8 +681,8 @@ update msg model =
             , Cmd.none
             )
 
-        ToggleMakeSounds ->
-            ( { model | makeSounds = not model.makeSounds }
+        SetSoundType soundType ->
+            ( { model | soundType = soundType }
             , Cmd.none
             )
 
@@ -989,20 +990,28 @@ updateObjects model =
                 |> List.map (updateObject ws model.objects)
 
         soundCmds =
-            if model.makeSounds then
-                doSounds model.windowSize objects model.objects
-
-            else
-                []
+            doSounds model.windowSize objects model.objects model
     in
     ( { model | objects = objects }, Cmd.batch soundCmds )
 
 
-doSounds : Size -> List Object -> List Object -> List (Cmd msg)
-doSounds windowSize updated original =
+doSounds : Size -> List Object -> List Object -> Model -> List (Cmd msg)
+doSounds windowSize updated original model =
     let
+        soundType =
+            model.soundType
+
         useHorizontal =
-            windowSize.width >= windowSize.height
+            (soundType == SoundOn)
+                || ((soundType == OneDimSound)
+                        && (windowSize.width >= windowSize.height)
+                   )
+
+        useVertical =
+            (soundType == SoundOn)
+                || ((soundType == OneDimSound)
+                        && (windowSize.width < windowSize.height)
+                   )
 
         folder : Object -> List (Cmd msg) -> List (Cmd msg)
         folder up cmds =
@@ -1016,13 +1025,13 @@ doSounds windowSize updated original =
 
                     else if
                         (useHorizontal && up.velocity.x < o.velocity.x)
-                            || (not useHorizontal && up.velocity.y < o.velocity.y)
+                            || (useVertical && up.velocity.y < o.velocity.y)
                     then
                         objectSound o 1 :: cmds
 
                     else if
                         (useHorizontal && up.velocity.x > o.velocity.x)
-                            || (not useHorizontal && up.velocity.y > o.velocity.y)
+                            || (useVertical && up.velocity.y > o.velocity.y)
                     then
                         objectSound o -1 :: cmds
 
@@ -1104,17 +1113,23 @@ choiceRadioButton name choice model =
     radioButton name (isChoice choice model) (ToggleChoice choice)
 
 
-radioButton : String -> Bool -> msg -> Html msg
-radioButton name isChecked msg =
+radioButtonOfType : String -> String -> Bool -> msg -> Html msg
+radioButtonOfType theType rbn isChecked msg =
     label []
         [ input
             [ type_ "radio"
+            , name theType
             , onClick msg
             , checked isChecked
             ]
             []
-        , text name
+        , text rbn
         ]
+
+
+radioButton : String -> Bool -> msg -> Html msg
+radioButton =
+    radioButtonOfType "radio"
 
 
 checkbox : String -> Bool -> msg -> Html msg
@@ -1135,6 +1150,9 @@ dialog model =
     let
         run =
             not model.running
+
+        soundType =
+            model.soundType
     in
     Dialog.render
         { styles = []
@@ -1165,7 +1183,12 @@ dialog model =
                     , choiceRadioButton "Milo" miloChoice model
                     ]
                 , p []
-                    [ checkbox "Make sounds" model.makeSounds ToggleMakeSounds ]
+                    [ radioButtonOfType "sound" "NoSound" (soundType == NoSound) (SetSoundType NoSound)
+                    , text " "
+                    , radioButtonOfType "sound" "SoundOn" (soundType == SoundOn) (SetSoundType SoundOn)
+                    , text " "
+                    , radioButtonOfType "sound" "OneDimSound" (soundType == OneDimSound) (SetSoundType OneDimSound)
+                    ]
                 , div []
                     [ lines
                         [ "Choose a character and click 'Add' to add it."
